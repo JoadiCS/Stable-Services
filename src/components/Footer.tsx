@@ -151,7 +151,9 @@ export function Footer() {
         <div className="ss-footer-legal">
           <a href={siteConfig.legal.privacyUrl}>Privacy Policy</a>
           <a href={siteConfig.legal.termsUrl}>Terms of Service</a>
-          <a href="#">{siteConfig.legal.license}</a>
+          {siteConfig.legal.license && (
+            <a href="#">{siteConfig.legal.license}</a>
+          )}
         </div>
       </div>
     </footer>
