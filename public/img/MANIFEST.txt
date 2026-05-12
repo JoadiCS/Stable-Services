@@ -1,0 +1,5 @@
+0	hero-poster.jpg	248316	32948
+1	why-photo.png	245146	401209
+2	photo-band-left.png	425392	731195
+3	photo-band-right.png	320618	1299254
+4	cta-bg.png	345638	1728729
