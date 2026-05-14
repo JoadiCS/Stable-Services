@@ -3,7 +3,7 @@
  * and the funnel modal's "select a plan" step.
  */
 
-export type ServiceKey = 'pool' | 'lawn' | 'pressure' | 'windows' | 'multiple' | 'repairs';
+export type ServiceKey = 'pool' | 'lawn' | 'pressure' | 'windows' | 'cleaning' | 'multiple' | 'repairs';
 
 export interface PricingPlan {
   id: string;
@@ -81,7 +81,7 @@ export const poolPlans: PricingPlan[] = [
     fromPrice: '$139.99/mo',
     featured: true,
     badge: 'Most Popular',
-    checkoutUrl: 'https://square.link/u/DxSrrdO3',
+    checkoutUrl: 'https://square.link/u/jlSqMBIJ',
   },
   {
     id: 'plus',
@@ -133,10 +133,87 @@ export const lawnPlans: PricingPlan[] = [
   },
 ];
 
+/** Residential Cleaning plans */
+export const cleaningPlans: PricingPlan[] = [
+  {
+    id: 'cleaning-essential',
+    tier: 'Residential Cleaning — Essential',
+    name: 'Stable Essential',
+    dollar: '$',
+    amount: '139',
+    period: '.99 / month',
+    description:
+      'Professional residential cleaning to keep your home fresh and welcoming.',
+    features: [
+      'Every 3 weeks deep cleaning',
+      'Kitchen & bathroom sanitization',
+      'Vacuuming & mopping',
+      'Dusting & surface cleaning',
+      'Trash removal',
+    ],
+    funnelBlurb: 'Every 3 weeks cleaning, Kitchen & bath sanitization, Vacuuming, Dusting',
+    ctaLabel: 'Get Started →',
+    fromPrice: '$139.99/mo',
+  },
+  {
+    id: 'cleaning-standard',
+    tier: 'Residential Cleaning — Standard',
+    name: 'Stable Standard',
+    dollar: '$',
+    amount: '219',
+    period: '.99 / month',
+    description:
+      'Weekly professional cleaning for homes that want consistent care and attention to detail.',
+    features: [
+      'Weekly deep cleaning',
+      'Kitchen & bathroom sanitization',
+      'Vacuuming & mopping all floors',
+      'Dusting & surface cleaning',
+      'Trash removal',
+      'Baseboards & window sills',
+      'Interior window cleaning',
+    ],
+    funnelBlurb:
+      'Weekly cleaning, Full sanitization, All floors, Baseboards & sills, Interior windows',
+    ctaLabel: 'Get Started →',
+    fromPrice: '$219.99/mo',
+    featured: true,
+    badge: 'Most Popular',
+  },
+  {
+    id: 'cleaning-plus',
+    tier: 'Residential Cleaning — Premium',
+    name: 'Stable',
+    nameSuffix: '+',
+    dollar: '$',
+    amount: '359',
+    period: '.99 / month',
+    description:
+      'The ultimate white-glove cleaning experience with priority scheduling and premium services.',
+    features: [
+      'Weekly deep cleaning',
+      'Kitchen & bathroom sanitization',
+      'Vacuuming & mopping all floors',
+      'Dusting & surface cleaning',
+      'Trash removal',
+      'Baseboards & window sills',
+      'Interior & exterior window cleaning',
+      'Refrigerator & oven deep clean (monthly)',
+      'Priority scheduling & same-day service',
+      'Eco-friendly cleaning products',
+    ],
+    funnelBlurb:
+      'Everything in Standard + Exterior windows, Monthly appliance deep clean, Priority scheduling, Eco-friendly products',
+    ctaLabel: 'Get Started →',
+    fromPrice: '$359.99/mo',
+  },
+];
+
 /** Plan lookup used by the funnel modal */
 export const planData: Record<Exclude<ServiceKey, 'repairs'>, PricingPlan[]> = {
   pool: poolPlans,
   lawn: lawnPlans,
+  cleaning: cleaningPlans,
   pressure: [
     {
       id: 'estimate',

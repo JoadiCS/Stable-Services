@@ -6,7 +6,8 @@ export function Hero() {
 
   return (
     <section className="ss-hero" id="home">
-      {/* Cinematic Scottsdale aerial loop — full-bleed background */}
+      {/* Cinematic Scottsdale aerial loop — full-bleed background.
+          Mobile gets a lighter 720p file via the media query; desktop gets full 1080p. */}
       <video
         className="ss-hero-bg-video"
         autoPlay
@@ -17,6 +18,11 @@ export function Hero() {
         preload="metadata"
         aria-hidden="true"
       >
+        <source
+          src="/video/scottsdale-hero-mobile.mp4"
+          type="video/mp4"
+          media="(max-width: 960px)"
+        />
         <source src="/video/scottsdale-hero.mp4" type="video/mp4" />
       </video>
       {/* Layered overlays — darken left for text readability, fade bottom to navy */}
@@ -36,7 +42,9 @@ export function Hero() {
           <br />
           Service Provider
         </h1>
-        <p className="ss-hero-sub">You have high standards. So do we.</p>
+        <p className="ss-hero-sub">
+          You set the standard. <em>We exceed it.</em>
+        </p>
         <div className="ss-hero-actions">
           <button className="ss-btn-primary" onClick={() => openFunnel()}>
             Schedule Your First Service

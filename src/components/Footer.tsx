@@ -1,10 +1,16 @@
+import { Link } from 'react-router-dom';
 import { useModal } from '@/context/ModalContext';
 import { useServices } from '@/context/ServicesContext';
+import { useAuthUser } from '@/lib/auth';
 import { siteConfig } from '@/data/siteConfig';
 
 export function Footer() {
   const { openFunnel } = useModal();
   const { goToTab } = useServices();
+  const { user } = useAuthUser();
+  const loggedIn = !!user;
+  const clientLinkTo = loggedIn ? '/portal/dashboard' : '/portal/login';
+  const clientLinkLabel = loggedIn ? 'My Account' : 'Client Login';
 
   return (
     <footer className="ss-footer">
@@ -127,6 +133,9 @@ export function Footer() {
             </li>
             <li>
               <a href="#">{siteConfig.contact.cityLabel}</a>
+            </li>
+            <li>
+              <Link to={clientLinkTo}>{clientLinkLabel}</Link>
             </li>
             <li style={{ marginTop: '.75rem' }}>
               <a

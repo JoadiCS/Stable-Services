@@ -19,7 +19,12 @@ export function Why() {
       <FadeIn>
         <div className="ss-why-layout">
           <div className="ss-why-photo-left">
-            <img src="/img/why-photo.png" alt="Arizona luxury estate property" />
+            <img
+              src="/img/why-photo.png"
+              alt="Arizona luxury estate property"
+              loading="lazy"
+              decoding="async"
+            />
             <div
               style={{
                 position: 'absolute',

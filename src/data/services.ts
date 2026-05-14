@@ -12,6 +12,7 @@ export interface ServiceTab {
 export const serviceTabs: ServiceTab[] = [
   { key: 'pool', label: 'Pool Service' },
   { key: 'lawn', label: 'Lawn Care' },
+  { key: 'cleaning', label: 'Residential Cleaning' },
   { key: 'pressure', label: 'Pressure Washing' },
   { key: 'windows', label: 'Window Cleaning' },
   { key: 'repairs', label: 'Repairs & Upgrades' },
@@ -37,6 +38,12 @@ export const funnelServiceOptions: FunnelServiceOption[] = [
     name: 'Lawn Care',
     description: 'Mowing, trimming & weed control',
     priceLabel: '$179.99/mo',
+  },
+  {
+    key: 'cleaning',
+    name: 'Residential Cleaning',
+    description: 'Professional home cleaning & sanitization',
+    priceLabel: 'from $139.99/mo',
   },
   {
     key: 'pressure',
@@ -92,6 +99,13 @@ export const lawnSizeOptions = [
   'Medium (2,500–5,000 sq ft)',
   'Large (5,000–10,000 sq ft)',
   'Extra Large (10,000+ sq ft)',
+];
+
+export const houseSizeOptions = [
+  'Small (1-2 bedrooms)',
+  'Medium (3 bedrooms)',
+  'Large (4-5 bedrooms)',
+  'Extra Large (5+ bedrooms)',
 ];
 
 export const pressureAreaOptions = [

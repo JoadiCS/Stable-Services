@@ -3,11 +3,13 @@ import { useModal, type FunnelService } from '@/context/ModalContext';
 import { planData, type PricingPlan } from '@/data/plans';
 import { saveBooking, newBookingId } from '@/lib/bookingStorage';
 import { buildZapierPayload, sendToZapier } from '@/lib/zapierWebhook';
+import { sendBackupEmail } from '@/lib/emailBackup';
 import {
   funnelServiceOptions,
   poolSizeOptions,
   poolTypeOptions,
   lawnSizeOptions,
+  houseSizeOptions,
   pressureAreaOptions,
   timeWindowOptions,
   weekdayOptions,
@@ -35,6 +37,7 @@ export interface FunnelSubmission {
     poolSize?: string;
     poolType?: string;
     lawnSize?: string;
+    houseSize?: string;
     pressureArea?: string;
     notes: string;
   };
@@ -62,6 +65,7 @@ async function submitFunnel(payload: FunnelSubmission) {
 const serviceIconMap: Record<FunnelService, typeof IconPoolWave> = {
   pool: IconPoolWave,
   lawn: IconLandscape,
+  cleaning: IconPest,
   pressure: IconPest,
   windows: IconWindow,
   multiple: IconGrid,
@@ -75,6 +79,7 @@ interface PropertyForm {
   poolSize: string;
   poolType: string;
   lawnSize: string;
+  houseSize: string;
   pressureArea: string;
   notes: string;
 }
@@ -97,6 +102,7 @@ const emptyProperty: PropertyForm = {
   poolSize: '',
   poolType: '',
   lawnSize: '',
+  houseSize: '',
   pressureArea: '',
   notes: '',
 };
@@ -172,6 +178,7 @@ export function FunnelModal() {
 
   const showPool = service === 'pool' || service === 'multiple';
   const showLawn = service === 'lawn';
+  const showCleaning = service === 'cleaning';
   const showPressure = service === 'pressure';
 
   function selectService(s: FunnelService) {
@@ -211,6 +218,7 @@ export function FunnelModal() {
           poolType: property.poolType,
         }),
         ...(showLawn && { lawnSize: property.lawnSize }),
+        ...(showCleaning && { houseSize: property.houseSize }),
         ...(showPressure && { pressureArea: property.pressureArea }),
       },
       schedule,
@@ -222,28 +230,34 @@ export function FunnelModal() {
     // can be correlated by your Zap.
     const bookingId = newBookingId();
 
-    // Fire the "lead" webhook to Zapier — captures every completed funnel,
-    // even if the customer abandons checkout. Fire-and-forget; never blocks.
-    void sendToZapier(buildZapierPayload(payload, 'lead', bookingId));
-
-    // If the chosen plan has a hosted checkout URL (Square), persist the
-    // booking + bookingId and send the customer to payment. Otherwise fall
-    // back to the standard success screen.
     const selectedPlan: PricingPlan | undefined = planList.find(
       (p) => p.id === plan,
     );
+
     if (selectedPlan?.checkoutUrl) {
-      // Stash the full submission so the ThankYou page can render a summary
-      // once Square redirects the customer back to /?status=success.
+      // PAID booking flow:
+      //  1) Fire "lead" webhook (captures every completed funnel, even if
+      //     the customer abandons Square checkout)
+      //  2) Stash booking for the ThankYou page (which fires "paid" once
+      //     Square redirects back)
+      //  3) Redirect to Square
+      void sendToZapier(buildZapierPayload(payload, 'lead', bookingId));
+      void sendBackupEmail(buildZapierPayload(payload, 'lead', bookingId));
       saveBooking(payload, bookingId);
       setRedirecting(true);
-      // Brief pause so the "Redirecting..." state is readable before navigation.
       window.setTimeout(() => {
         window.location.href = selectedPlan.checkoutUrl!;
       }, 800);
       return;
     }
 
+    // ESTIMATE / NON-PAID flow (Pressure Washing, Window Cleaning, multi):
+    // No Square checkout exists, so this is the only event. Fire as
+    // "estimate" so the Zapier filter can match it the same way it matches
+    // "paid" — every successful submission becomes a real lead in HCP +
+    // dispatcher email.
+    void sendToZapier(buildZapierPayload(payload, 'estimate', bookingId));
+    void sendBackupEmail(buildZapierPayload(payload, 'estimate', bookingId));
     setSubmitted(true);
   }
 
@@ -518,6 +532,29 @@ export function FunnelModal() {
                         >
                           <option value="">Select size</option>
                           {lawnSizeOptions.map((o) => (
+                            <option key={o}>{o}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {showCleaning && (
+                      <div className="ss-f-field">
+                        <label htmlFor="f-housesize">
+                          Home Size
+                        </label>
+                        <select
+                          id="f-housesize"
+                          value={property.houseSize}
+                          onChange={(e) =>
+                            setProperty((s) => ({
+                              ...s,
+                              houseSize: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">Select size</option>
+                          {houseSizeOptions.map((o) => (
                             <option key={o}>{o}</option>
                           ))}
                         </select>

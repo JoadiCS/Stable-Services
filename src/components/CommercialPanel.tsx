@@ -5,11 +5,10 @@ import {
   commercialServiceOptions,
   commercialServiceList,
 } from '@/data/services';
+import { newBookingId } from '@/lib/bookingStorage';
+import { sendToZapier, type ZapierPayload } from '@/lib/zapierWebhook';
+import { sendBackupEmail } from '@/lib/emailBackup';
 
-/* ─────────────────────────────────────────────────────────────────────────
-   TODO before launch: wire up to your backend / CRM.
-   Replace the stub body of `submitCommercialInquiry` with a real fetch call.
-   ───────────────────────────────────────────────────────────────────────── */
 export interface CommercialInquiryPayload {
   firstName: string;
   lastName: string;
@@ -23,10 +22,38 @@ export interface CommercialInquiryPayload {
 }
 
 async function submitCommercialInquiry(payload: CommercialInquiryPayload) {
-  // eslint-disable-next-line no-console
-  console.log('[Commercial Inquiry]', payload);
-  // TODO: replace with real endpoint, e.g.
-  // await fetch('/api/commercial', { method: 'POST', body: JSON.stringify(payload) });
+  // Fire to Zapier — stage="commercial" so the Zap filter routes it through.
+  const fullName = `${payload.firstName} ${payload.lastName}`.trim();
+  const zap: ZapierPayload = {
+    stage: 'commercial',
+    source: 'stablesvc-website',
+    bookingId: newBookingId(),
+    submittedAt: new Date().toISOString(),
+    service: 'commercial',
+    serviceLabel: 'Commercial Inquiry',
+    plan: 'inquiry',
+    planLabel: payload.services || 'Multiple / All Services',
+    planPrice: 'Custom proposal',
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    fullName,
+    phone: payload.phone,
+    email: payload.email,
+    preferredContact: 'Email',
+    address: '',
+    city: '',
+    fullAddress: '',
+    notes: payload.notes,
+    preferredDate: '',
+    timeWindow: '',
+    weeklyDay: '',
+    businessName: payload.business,
+    businessRole: payload.role,
+    propertyType: payload.propertyType,
+    servicesInterested: payload.services,
+  };
+  void sendToZapier(zap);
+  void sendBackupEmail(zap);
 }
 
 export function CommercialPanel() {

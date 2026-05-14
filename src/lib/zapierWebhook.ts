@@ -22,7 +22,7 @@ import {
   serviceLabel,
 } from '@/lib/bookingDisplay';
 
-export type WebhookStage = 'lead' | 'paid';
+export type WebhookStage = 'lead' | 'paid' | 'estimate' | 'commercial' | 'repair';
 
 export interface ZapierPayload {
   stage: WebhookStage;
@@ -54,6 +54,7 @@ export interface ZapierPayload {
   poolSize?: string;
   poolType?: string;
   lawnSize?: string;
+  houseSize?: string;
   pressureArea?: string;
   notes: string;
 
@@ -64,6 +65,17 @@ export interface ZapierPayload {
 
   // Square / payment
   confirmationId?: string;
+
+  // Commercial inquiry only
+  businessName?: string;
+  businessRole?: string;
+  propertyType?: string;
+  servicesInterested?: string;
+
+  // Repair request only
+  repairCategory?: string;
+  urgency?: string;
+  description?: string;
 }
 
 function getWebhookUrl(): string | undefined {
@@ -112,6 +124,7 @@ export function buildZapierPayload(
     poolSize: submission.property.poolSize,
     poolType: submission.property.poolType,
     lawnSize: submission.property.lawnSize,
+    houseSize: submission.property.houseSize,
     pressureArea: submission.property.pressureArea,
     notes: submission.property.notes,
 

@@ -4,45 +4,58 @@ import json
 # Your webhook URL
 url = 'https://hooks.zapier.com/hooks/catch/27437506/4yk5gd0/'
 
-# Test payload with all required fields
+# Test payload with all fields including new ones for multiple lead types
 payload = {
-    "stage": "paid",
+    "stage": "commercial",
     "source": "stablesvc-website",
-    "firstName": "John",
-    "lastName": "Doe",
-    "fullName": "John Doe",
-    "email": "john@example.com",
-    "phone": "555-123-4567",
-    "address": "123 Main St",
-    "city": "Denver",
-    "fullAddress": "123 Main St, Denver, CO",
-    "serviceLabel": "Pool Service",
-    "planLabel": "Stable Standard",
-    "planPrice": "$129.99/mo",
-    "service": "pool",
-    "plan": "standard",
-    "preferredDate": "2025-06-15",
-    "timeWindow": "9am-12pm",
-    "weeklyDay": "Monday",
-    "poolSize": "15x30",
-    "poolType": "In-ground",
-    "lawnSize": "0.5 acres",
-    "pressureArea": "2000 sqft",
-    "preferredContact": "Email",
-    "confirmationId": "CONF-2025-001",
-    "bookingId": "BOOK-2025-12345",
-    "submittedAt": "2025-06-01T14:30:00Z",
-    "notes": "Customer has pets and prefers evening appointments"
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "fullName": "Jane Smith",
+    "email": "jane@business.com",
+    "phone": "555-987-6543",
+    "address": "456 Business Ave",
+    "city": "Phoenix",
+    "fullAddress": "456 Business Ave, Phoenix, AZ",
+    "serviceLabel": "Commercial Cleaning",
+    "planLabel": "Enterprise",
+    "planPrice": "$2,499/mo",
+    "service": "commercial",
+    "plan": "enterprise",
+    "preferredDate": "2025-06-20",
+    "timeWindow": "after 5pm",
+    "weeklyDay": "Wednesday",
+    "poolSize": "",
+    "poolType": "",
+    "lawnSize": "",
+    "pressureArea": "",
+    "businessName": "Smith Property Management Inc",
+    "businessRole": "Operations Director",
+    "propertyType": "Commercial Office Complex",
+    "servicesInterested": "Floor waxing, carpet cleaning, window washing",
+    "repairCategory": "",
+    "urgency": "",
+    "description": "",
+    "preferredContact": "Phone call",
+    "confirmationId": "CONF-2025-002",
+    "bookingId": "BOOK-2025-54321",
+    "submittedAt": "2025-06-01T16:45:00Z",
+    "notes": "Property has 15 floors, bulk discount negotiable"
 }
 
 # Send POST request
 try:
+    print("🚀 Sending test data to webhook...")
     response = requests.post(url, json=payload)
     
     # Print the response
-    print("✅ Request sent successfully!")
+    print("\n✅ Request sent successfully!")
     print(f"Status Code: {response.status_code}")
     print(f"Response: {response.text}")
     
+    if response.status_code == 200:
+        print("\n🎉 Test data received! Now go back to Zapier and test Step 3.")
+    else:
+        print("\n⚠️  Check the status code above.")
+    
 except Exception as e:
-    print(f"❌ Error sending request: {e}")
+    print(f"\n❌ Error sending request: {e}")

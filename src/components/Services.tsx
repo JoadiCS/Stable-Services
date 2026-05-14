@@ -2,7 +2,7 @@ import { FadeIn } from './FadeIn';
 import { PricingCard } from './PricingCard';
 import { useModal } from '@/context/ModalContext';
 import { useServices } from '@/context/ServicesContext';
-import { poolPlans, lawnPlans } from '@/data/plans';
+import { poolPlans, lawnPlans, cleaningPlans } from '@/data/plans';
 import {
   serviceTabs,
   pressureProjects,
@@ -111,6 +111,16 @@ export function Services() {
                     Request a Quote →
                   </button>
                 </div>
+              </div>
+            </FadeIn>
+          )}
+
+          {activeTab === 'cleaning' && (
+            <FadeIn>
+              <div className="ss-pricing-grid cols-3">
+                {cleaningPlans.map((p) => (
+                  <PricingCard key={p.id} plan={p} service="cleaning" />
+                ))}
               </div>
             </FadeIn>
           )}

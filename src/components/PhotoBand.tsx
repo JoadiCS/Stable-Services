@@ -29,6 +29,8 @@ function PhotoCard({
       <img
         src={src}
         alt={alt}
+        loading="lazy"
+        decoding="async"
         style={{
           width: '100%',
           height: '100%',

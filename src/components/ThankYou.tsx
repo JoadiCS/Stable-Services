@@ -10,6 +10,7 @@ import {
 import { siteConfig } from '@/data/siteConfig';
 import { renderReceiptHtml } from './ThankYouReceipt';
 import { buildZapierPayload, sendToZapier } from '@/lib/zapierWebhook';
+import { sendBackupEmail } from '@/lib/emailBackup';
 
 /* ─────────────────────────────────────────────────────────────────────────
    Post-payment confirmation page.
@@ -28,14 +29,14 @@ export function ThankYou() {
     window.scrollTo(0, 0);
     if (booking && !paidWebhookSent.current) {
       paidWebhookSent.current = true;
-      void sendToZapier(
-        buildZapierPayload(
-          booking,
-          'paid',
-          booking.bookingId,
-          booking.confirmationId,
-        ),
+      const payload = buildZapierPayload(
+        booking,
+        'paid',
+        booking.bookingId,
+        booking.confirmationId,
       );
+      void sendToZapier(payload);
+      void sendBackupEmail(payload);
     }
   }, [booking]);
 

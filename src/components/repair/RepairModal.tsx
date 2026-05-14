@@ -5,11 +5,9 @@ import {
   repairUrgencyOptions,
   contactPrefOptions,
 } from '@/data/services';
-
-/* ─────────────────────────────────────────────────────────────────────────
-   Repair request modal.
-   TODO before launch: replace stub submitRepairRequest() with real API call.
-   ───────────────────────────────────────────────────────────────────────── */
+import { newBookingId } from '@/lib/bookingStorage';
+import { sendToZapier, type ZapierPayload } from '@/lib/zapierWebhook';
+import { sendBackupEmail } from '@/lib/emailBackup';
 
 export interface RepairRequestPayload {
   category: string;
@@ -25,10 +23,38 @@ export interface RepairRequestPayload {
 }
 
 async function submitRepairRequest(payload: RepairRequestPayload) {
-  // eslint-disable-next-line no-console
-  console.log('[Repair Request]', payload);
-  // TODO: replace with real endpoint, e.g.
-  // await fetch('/api/repair', { method: 'POST', body: JSON.stringify(payload) });
+  // Fire to Zapier — stage="repair" routes the request through the same Zap.
+  const fullName = `${payload.firstName} ${payload.lastName}`.trim();
+  const zap: ZapierPayload = {
+    stage: 'repair',
+    source: 'stablesvc-website',
+    bookingId: newBookingId(),
+    submittedAt: new Date().toISOString(),
+    service: 'repair',
+    serviceLabel: 'Repairs & Upgrades',
+    plan: 'request',
+    planLabel: payload.category,
+    planPrice: 'Custom estimate',
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    fullName,
+    phone: payload.phone,
+    email: payload.email,
+    preferredContact: payload.contactPref,
+    address: payload.address,
+    city: '',
+    fullAddress: payload.address,
+    notes: payload.description,
+    preferredDate: '',
+    timeWindow: '',
+    weeklyDay: '',
+    propertyType: payload.propertyType,
+    repairCategory: payload.category,
+    urgency: payload.urgency,
+    description: payload.description,
+  };
+  void sendToZapier(zap);
+  void sendBackupEmail(zap);
 }
 
 export function RepairModal() {
