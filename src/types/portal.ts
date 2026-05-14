@@ -24,6 +24,12 @@ export interface Customer {
   serviceTimeWindow: ServiceWindow;
   notes?: string;
   status: CustomerStatus;
+  /**
+   * Per-customer monthly rate override in dollars. When set (and > 0),
+   * this overrides the plan-tier default in monthlyRevenueFor(). Use for
+   * grandfathered customers or one-off custom pricing.
+   */
+  monthlyRate?: number;
   /** Firestore Timestamp on read, server-resolved on write. */
   createdAt?: Timestamp;
 }
@@ -95,3 +101,20 @@ export interface StaffMember {
   active: boolean;
   createdAt?: Timestamp;
 }
+
+export type ServiceRequestStatus = 'new' | 'in_progress' | 'resolved' | 'closed';
+
+export interface ServiceRequest {
+  requestId: string;
+  customerId?: string;
+  customerName?: string;
+  customerEmail?: string;
+  title?: string;
+  body?: string;
+  category?: string;
+  urgency?: string;
+  status: ServiceRequestStatus;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+

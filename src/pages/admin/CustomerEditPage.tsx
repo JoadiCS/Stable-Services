@@ -22,6 +22,7 @@ export function CustomerEditPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [techs, setTechs] = useState<StaffMember[]>([]);
   const [form, setForm] = useState<CustomerInput | null>(null);
+  const [monthlyRateText, setMonthlyRateText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -40,6 +41,9 @@ export function CustomerEditPage() {
           void _id;
           void _ts;
           setForm({ ...rest });
+          setMonthlyRateText(
+            typeof c.monthlyRate === 'number' && c.monthlyRate > 0 ? String(c.monthlyRate) : '',
+          );
         }
       } catch (e) {
         if (!cancelled) setErr(e instanceof Error ? e.message : 'Could not load customer.');
@@ -61,7 +65,9 @@ export function CustomerEditPage() {
     setErr(null);
     setToast(null);
     try {
-      await updateCustomer(customerId, form);
+      const monthlyRate = parseRate(monthlyRateText);
+      const clearFields: ('monthlyRate')[] = monthlyRate === undefined ? ['monthlyRate'] : [];
+      await updateCustomer(customerId, { ...form, monthlyRate }, clearFields);
       setToast('Saved.');
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not save customer.');
@@ -136,6 +142,18 @@ export function CustomerEditPage() {
                 ))}
               </select>
             </Field>
+            <Field label="Monthly rate ($)" hint="Leave blank to use the plan-tier default. Set this to lock in a grandfathered or custom rate.">
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={monthlyRateText}
+                onChange={(e) => setMonthlyRateText(e.target.value)}
+                placeholder="auto from plan"
+                style={textField}
+              />
+            </Field>
             <Field label="Service day">
               <select value={form.serviceDayOfWeek} onChange={(e) => patch('serviceDayOfWeek', Number(e.target.value))} style={textField}>
                 {DAY_LABELS.map((d, i) => (
@@ -189,7 +207,15 @@ export function CustomerEditPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label style={{ display: 'block' }}>
       <div
@@ -204,8 +230,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
         {label}
       </div>
       {children}
+      {hint && (
+        <div style={{ marginTop: '0.35rem', fontSize: '0.7rem', color: '#8b95a7', lineHeight: 1.5 }}>
+          {hint}
+        </div>
+      )}
     </label>
   );
+}
+
+function parseRate(text: string): number | undefined {
+  const trimmed = text.trim();
+  if (trimmed === '') return undefined;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  return n;
 }
 
 function Note({ children }: { children: React.ReactNode }) {

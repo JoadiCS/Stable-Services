@@ -1,0 +1,25 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "visits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scheduledDate", "order": "ASCENDING" },
+        { "fieldPath": "scheduledWindow", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "visits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scheduledDate", "order": "ASCENDING" },
+        { "fieldPath": "techId", "order": "ASCENDING" },
+        { "fieldPath": "scheduledWindow", "order": "ASCENDING" },
+        { "fieldPath": "customerName", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

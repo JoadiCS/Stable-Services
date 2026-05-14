@@ -7,7 +7,7 @@ import {
   listVisitsForCustomer,
   listVisitsForWeek,
 } from '@/lib/visits';
-import { monthlyRevenueFor } from '@/lib/planPricing';
+import { loadPricingConfig, monthlyRevenueFor } from '@/lib/planPricing';
 import { countServiceRequestsSince } from '@/lib/serviceRequests';
 import { statusFor, type RangeKey } from '@/data/poolRanges';
 import type { Customer, Visit } from '@/types/portal';
@@ -303,13 +303,14 @@ async function loadMetrics(): Promise<Metrics> {
   const weekEndISO = format(weekEnd, 'yyyy-MM-dd');
   const sevenDaysAgo = subDays(now, 7);
 
-  const [allCustomers, weekVisits] = await Promise.all([
+  const [allCustomers, weekVisits, pricing] = await Promise.all([
     safeList(() => listCustomers()),
     safeList(() => listVisitsForWeek(weekStartISO, weekEndISO)),
+    loadPricingConfig(),
   ]);
 
   const active = allCustomers.filter((c) => c.status === 'active');
-  const mrr = active.reduce((sum, c) => sum + monthlyRevenueFor(c.serviceType, c.plan), 0);
+  const mrr = active.reduce((sum, c) => sum + monthlyRevenueFor(c, pricing), 0);
 
   const customersThisWeek = active.filter((c) => {
     const t = c.createdAt;

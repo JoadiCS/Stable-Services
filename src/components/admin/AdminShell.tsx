@@ -8,6 +8,7 @@ const navItems = [
   { to: '/admin/schedule', label: 'Schedule' },
   { to: '/admin/techs', label: 'Techs' },
   { to: '/admin/requests', label: 'Service Requests' },
+  { to: '/admin/settings/pricing', label: 'Pricing' },
 ];
 
 export function AdminShell() {

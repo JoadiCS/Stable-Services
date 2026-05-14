@@ -221,6 +221,7 @@ function AddCustomerModal({
     notes: '',
     status: 'active',
   });
+  const [monthlyRateText, setMonthlyRateText] = useState('');
   const [customerId, setCustomerId] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -235,7 +236,11 @@ function AddCustomerModal({
     try {
       const cleanedTech = form.assignedTechId?.trim() || undefined;
       const cleanedId = customerId.trim() || undefined;
-      await createCustomer({ ...form, assignedTechId: cleanedTech }, cleanedId);
+      const monthlyRate = parseRate(monthlyRateText);
+      await createCustomer(
+        { ...form, assignedTechId: cleanedTech, monthlyRate },
+        cleanedId,
+      );
       onCreated();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not create customer.');
@@ -322,6 +327,18 @@ function AddCustomerModal({
               ))}
             </select>
           </Field>
+          <Field label="Monthly rate ($)" hint="Leave blank to use the plan-tier default. Set this to lock in a grandfathered or custom rate.">
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={monthlyRateText}
+              onChange={(e) => setMonthlyRateText(e.target.value)}
+              placeholder="auto from plan"
+              style={textField}
+            />
+          </Field>
           <Field label="Service day">
             <select
               value={form.serviceDayOfWeek}
@@ -393,7 +410,15 @@ function AddCustomerModal({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label style={{ display: 'block' }}>
       <div
@@ -408,8 +433,28 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
         {label}
       </div>
       {children}
+      {hint && (
+        <div
+          style={{
+            marginTop: '0.35rem',
+            fontSize: '0.7rem',
+            color: '#8b95a7',
+            lineHeight: 1.5,
+          }}
+        >
+          {hint}
+        </div>
+      )}
     </label>
   );
+}
+
+function parseRate(text: string): number | undefined {
+  const trimmed = text.trim();
+  if (trimmed === '') return undefined;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  return n;
 }
 
 function Empty({ children }: { children: React.ReactNode }) {

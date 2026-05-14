@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -71,9 +72,21 @@ export async function createCustomer(
   return id;
 }
 
+/**
+ * Pass `clearFields: ['monthlyRate']` to explicitly remove a field from
+ * the Firestore doc (uses deleteField sentinel). Useful when the admin
+ * blanks out an optional override field that previously held a value —
+ * undefined alone would be stripped by stripUndefined and the old value
+ * would persist on the doc.
+ */
 export async function updateCustomer(
   customerId: string,
   patch: Partial<CustomerInput>,
+  clearFields: ReadonlyArray<keyof CustomerInput> = [],
 ): Promise<void> {
-  await updateDoc(doc(db, COL, customerId), stripUndefined(patch));
+  const cleaned: Record<string, unknown> = stripUndefined(patch);
+  for (const f of clearFields) {
+    cleaned[f as string] = deleteField();
+  }
+  await updateDoc(doc(db, COL, customerId), cleaned);
 }
