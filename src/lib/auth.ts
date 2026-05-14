@@ -9,8 +9,9 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import type { StaffMember, StaffRole } from '@/types/portal';
 
-export type StaffRole = 'owner' | 'ops' | 'tech';
+export type { StaffRole };
 
 export interface AuthUserState {
   user: User | null;
@@ -59,6 +60,45 @@ export function useStaffRole(uid: string | null | undefined): StaffRoleState {
         }
       } catch {
         if (!cancelled) setState({ role: null, loading: false });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [uid]);
+
+  return state;
+}
+
+export interface StaffMemberState {
+  member: StaffMember | null;
+  loading: boolean;
+}
+
+export function useStaffMember(uid: string | null | undefined): StaffMemberState {
+  const [state, setState] = useState<StaffMemberState>({ member: null, loading: !!uid });
+
+  useEffect(() => {
+    if (!uid) {
+      setState({ member: null, loading: false });
+      return;
+    }
+    let cancelled = false;
+    setState({ member: null, loading: true });
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'staff', uid));
+        if (cancelled) return;
+        if (snap.exists()) {
+          setState({
+            member: { uid, ...(snap.data() as Omit<StaffMember, 'uid'>) },
+            loading: false,
+          });
+        } else {
+          setState({ member: null, loading: false });
+        }
+      } catch {
+        if (!cancelled) setState({ member: null, loading: false });
       }
     })();
     return () => {

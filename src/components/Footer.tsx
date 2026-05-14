@@ -137,6 +137,11 @@ export function Footer() {
             <li>
               <Link to={clientLinkTo}>{clientLinkLabel}</Link>
             </li>
+            <li>
+              <Link to="/tech/login" style={{ color: '#8b95a7', fontSize: '0.85em' }}>
+                Tech Login
+              </Link>
+            </li>
             <li style={{ marginTop: '.75rem' }}>
               <a
                 href="#"

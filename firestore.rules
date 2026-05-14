@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function staff() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/staff/$(request.auth.uid)).data
+        : null;
+    }
+    function isStaff() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+    function isTech() {
+      return isStaff() && staff().role in ['tech','lead_tech','owner','admin'];
+    }
+    function isOwnerOrAdmin() {
+      return isStaff() && staff().role in ['owner','admin'];
+    }
+    function isOwner() {
+      return isStaff() && staff().role == 'owner';
+    }
+
+    match /customers/{customerId} {
+      allow read: if isSignedIn()
+        && (request.auth.uid == customerId || isStaff());
+      allow update: if isSignedIn()
+        && (request.auth.uid == customerId || isOwnerOrAdmin());
+      allow create, delete: if isOwnerOrAdmin();
+
+      match /privateNotes/{noteId} {
+        allow read, write: if isStaff();
+      }
+    }
+
+    match /serviceRequests/{requestId} {
+      allow read: if isSignedIn()
+        && (resource.data.customerId == request.auth.uid || isStaff());
+      allow create: if isSignedIn()
+        && request.resource.data.customerId == request.auth.uid;
+      allow update: if isStaff();
+      allow delete: if isOwner();
+    }
+
+    match /visits/{visitId} {
+      allow read: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid
+        || resource.data.techId == request.auth.uid
+        || isStaff()
+      );
+      allow create: if isOwnerOrAdmin();
+      allow update: if isSignedIn() && (
+        resource.data.techId == request.auth.uid
+        || isOwnerOrAdmin()
+      );
+      allow delete: if isOwner();
+    }
+
+    match /staff/{staffId} {
+      allow read: if isStaff();
+      allow write: if isOwner();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

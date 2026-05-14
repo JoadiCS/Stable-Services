@@ -2,9 +2,9 @@ import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { signOut, useAuthUser, useStaffRole } from '@/lib/auth';
 
-const ALLOWED: ReadonlyArray<string> = ['owner', 'admin'];
+const ALLOWED: ReadonlyArray<string> = ['tech', 'lead_tech', 'owner', 'admin'];
 
-export function AdminProtectedRoute({ children }: { children: ReactNode }) {
+export function TechGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useAuthUser();
   const { role, loading: roleLoading } = useStaffRole(user?.uid);
   const location = useLocation();
@@ -14,7 +14,7 @@ export function AdminProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;
+    return <Navigate to="/tech/login" replace state={{ from: location.pathname }} />;
   }
 
   if (!role || !ALLOWED.includes(role)) {
@@ -29,7 +29,7 @@ export function AdminProtectedRoute({ children }: { children: ReactNode }) {
             color: '#ffffff',
           }}
         >
-          Access denied
+          Tech access required
         </div>
         <p
           style={{
@@ -40,8 +40,8 @@ export function AdminProtectedRoute({ children }: { children: ReactNode }) {
             margin: '0 auto 1.5rem',
           }}
         >
-          This account is signed in but does not have admin access. Sign out and use a
-          staff account to continue.
+          This account isn't set up as a tech. Sign out and try again with a
+          tech account.
         </p>
         <button
           onClick={() => void signOut()}

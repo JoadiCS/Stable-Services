@@ -1,6 +1,16 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthUser } from '@/lib/auth';
+import { listVisitsForCustomer } from '@/lib/visits';
+import type { ServiceType, Visit } from '@/types/portal';
+import { formatVisitDate } from './visitDisplay';
+
+const SERVICE_LABEL: Record<ServiceType, string> = {
+  pool: 'Pool',
+  lawn: 'Lawn',
+  pressure: 'Pressure',
+  window: 'Window',
+};
 
 export function DashboardPage() {
   const { user } = useAuthUser();
@@ -39,6 +49,7 @@ export function DashboardPage() {
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
           gap: '1.25rem',
+          marginBottom: '2.5rem',
         }}
       >
         <Card label="Your Plan" title="Stable Standard">
@@ -74,6 +85,127 @@ export function DashboardPage() {
           </div>
         </Card>
       </section>
+
+      <RecentVisits customerId={user?.uid} />
+    </div>
+  );
+}
+
+function RecentVisits({ customerId }: { customerId: string | undefined }) {
+  const [visits, setVisits] = useState<Visit[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!customerId) return;
+    let cancelled = false;
+    setVisits(null);
+    setErr(null);
+    (async () => {
+      try {
+        const all = await listVisitsForCustomer(customerId);
+        const recent = all
+          .filter((v) => v.status === 'completed' && v.reportGenerated)
+          .slice(0, 10);
+        if (!cancelled) setVisits(recent);
+      } catch (e) {
+        if (!cancelled) setErr(e instanceof Error ? e.message : 'Could not load visits.');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
+
+  return (
+    <section>
+      <div
+        style={{
+          fontSize: '0.65rem',
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: '#c9a84c',
+          marginBottom: '0.5rem',
+        }}
+      >
+        Recent Visits
+      </div>
+      <h2
+        style={{
+          fontFamily: 'Cormorant Garamond, Georgia, serif',
+          fontSize: '1.6rem',
+          fontWeight: 300,
+          marginBottom: '1.25rem',
+        }}
+      >
+        Your service history
+      </h2>
+
+      {err ? (
+        <Empty>{err}</Empty>
+      ) : visits === null ? (
+        <Empty>Loading…</Empty>
+      ) : visits.length === 0 ? (
+        <Empty>No completed visits yet. Once your first service is wrapped, the report appears here.</Empty>
+      ) : (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.75rem' }}>
+          {visits.map((v) => (
+            <li key={v.visitId}>
+              <Link
+                to={`/portal/visit/${v.visitId}`}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem 1rem',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: '#111827',
+                  border: '1px solid rgba(201,168,76,0.18)',
+                  borderRadius: 2,
+                  padding: '0.95rem 1.1rem',
+                  textDecoration: 'none',
+                  color: '#ffffff',
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontFamily: 'Cormorant Garamond, Georgia, serif',
+                      fontSize: '1.15rem',
+                      fontWeight: 300,
+                    }}
+                  >
+                    {formatVisitDate(v)}
+                  </div>
+                  <div style={{ color: '#8b95a7', fontSize: '0.82rem', marginTop: '0.25rem' }}>
+                    {SERVICE_LABEL[v.serviceType]} · {v.techName || 'Tech'}
+                  </div>
+                </div>
+                <span style={{ color: '#c9a84c', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  View Report →
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function Empty({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        background: '#111827',
+        border: '1px solid rgba(201,168,76,0.18)',
+        borderRadius: 2,
+        padding: '1.5rem',
+        color: '#8b95a7',
+        fontSize: '0.88rem',
+        lineHeight: 1.7,
+      }}
+    >
+      {children}
     </div>
   );
 }

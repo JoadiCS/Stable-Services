@@ -5,6 +5,8 @@ import { signOut, useAuthUser } from '@/lib/auth';
 const navItems = [
   { to: '/admin/dashboard', label: 'Overview', end: true },
   { to: '/admin/customers', label: 'Customers' },
+  { to: '/admin/schedule', label: 'Schedule' },
+  { to: '/admin/techs', label: 'Techs' },
   { to: '/admin/requests', label: 'Service Requests' },
 ];
 
@@ -114,22 +116,6 @@ export function AdminShell() {
               </NavLink>
             </li>
           ))}
-          <li>
-            <span
-              style={{
-                display: 'block',
-                padding: '0.7rem 0.9rem',
-                fontSize: '0.78rem',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: '#5a6373',
-                cursor: 'not-allowed',
-              }}
-              title="Coming soon"
-            >
-              Operations
-            </span>
-          </li>
         </ul>
       </aside>
 

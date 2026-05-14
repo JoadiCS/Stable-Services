@@ -27,6 +27,9 @@ dist-ssr
 .env.local
 .env.production
 
+# Deploy bundles
+*.zip
+
 # Build verification artifacts (safe to delete manually)
 node_modules_check/
 tsconfig.check.json

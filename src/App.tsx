@@ -26,6 +26,7 @@ import { ForgotPasswordPage } from './components/portal/ForgotPasswordPage';
 import { DashboardPage } from './components/portal/DashboardPage';
 import { RequestsPage } from './components/portal/RequestsPage';
 import { NewRequestPage } from './components/portal/NewRequestPage';
+import { VisitReportPage } from './components/portal/VisitReportPage';
 
 import { AdminShell } from './components/admin/AdminShell';
 import { AdminProtectedRoute } from './components/admin/AdminProtectedRoute';
@@ -33,6 +34,15 @@ import { AdminLoginPage } from './components/admin/AdminLoginPage';
 import { AdminDashboardPage } from './components/admin/AdminDashboardPage';
 import { CustomersPage } from './components/admin/CustomersPage';
 import { AdminRequestsPage } from './components/admin/RequestsPage';
+import { SchedulePage } from './pages/admin/SchedulePage';
+import { TechsPage } from './pages/admin/TechsPage';
+import { CustomerEditPage } from './pages/admin/CustomerEditPage';
+
+import { TechLoginPage } from './pages/tech/TechLoginPage';
+import { TechRoutePage } from './pages/tech/TechRoutePage';
+import { TechVisitPage } from './pages/tech/TechVisitPage';
+import { TechGuard } from './pages/tech/TechGuard';
+
 import { useAuthUser } from './lib/auth';
 
 function MarketingRoute() {
@@ -73,6 +83,12 @@ function AdminIndexRedirect() {
   return <Navigate to={user ? '/admin/dashboard' : '/admin/login'} replace />;
 }
 
+function TechIndexRedirect() {
+  const { user, loading } = useAuthUser();
+  if (loading) return null;
+  return <Navigate to={user ? '/tech/route' : '/tech/login'} replace />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -95,6 +111,7 @@ export default function App() {
               <Route path="/portal/dashboard" element={<DashboardPage />} />
               <Route path="/portal/requests" element={<RequestsPage />} />
               <Route path="/portal/requests/new" element={<NewRequestPage />} />
+              <Route path="/portal/visit/:visitId" element={<VisitReportPage />} />
             </Route>
 
             <Route path="/admin" element={<AdminIndexRedirect />} />
@@ -108,8 +125,30 @@ export default function App() {
             >
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/customers" element={<CustomersPage />} />
+              <Route path="/admin/customers/:customerId" element={<CustomerEditPage />} />
+              <Route path="/admin/schedule" element={<SchedulePage />} />
+              <Route path="/admin/techs" element={<TechsPage />} />
               <Route path="/admin/requests" element={<AdminRequestsPage />} />
             </Route>
+
+            <Route path="/tech" element={<TechIndexRedirect />} />
+            <Route path="/tech/login" element={<TechLoginPage />} />
+            <Route
+              path="/tech/route"
+              element={
+                <TechGuard>
+                  <TechRoutePage />
+                </TechGuard>
+              }
+            />
+            <Route
+              path="/tech/visit/:visitId"
+              element={
+                <TechGuard>
+                  <TechVisitPage />
+                </TechGuard>
+              }
+            />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
