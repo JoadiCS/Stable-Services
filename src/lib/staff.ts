@@ -19,6 +19,14 @@ function fromSnap(id: string, data: Record<string, unknown>): StaffMember {
   return { uid: id, ...(data as Omit<StaffMember, 'uid'>) };
 }
 
+function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out as Partial<T>;
+}
+
 export async function listTechs(): Promise<StaffMember[]> {
   const snap = await getDocs(
     query(
@@ -50,14 +58,15 @@ export type StaffInput = Omit<StaffMember, 'uid' | 'createdAt'>;
  * register using "Forgot password" with their email.
  */
 export async function createStaffMember(uid: string, input: StaffInput): Promise<void> {
-  await setDoc(doc(db, COL, uid), { ...input, createdAt: serverTimestamp() });
+  const payload = stripUndefined({ ...input, createdAt: serverTimestamp() });
+  await setDoc(doc(db, COL, uid), payload);
 }
 
 export async function updateStaffMember(
   uid: string,
   patch: Partial<StaffInput>,
 ): Promise<void> {
-  await updateDoc(doc(db, COL, uid), patch);
+  await updateDoc(doc(db, COL, uid), stripUndefined(patch));
 }
 
 export const STAFF_ROLE_OPTIONS: { value: StaffRole; label: string }[] = [

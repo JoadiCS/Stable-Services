@@ -20,6 +20,20 @@ function fromSnap(id: string, data: Record<string, unknown>): Customer {
   return { customerId: id, ...(data as Omit<Customer, 'customerId'>) };
 }
 
+/**
+ * Firestore rejects `undefined` field values with
+ * "Unsupported field value: undefined". Strip them before writing so
+ * partially-filled forms (e.g. no tech assigned yet) don't blow up.
+ * Empty strings are kept — they're legal Firestore values.
+ */
+function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out as Partial<T>;
+}
+
 export interface ListCustomersOpts {
   status?: CustomerStatus;
   serviceType?: ServiceType;
@@ -52,7 +66,8 @@ export async function createCustomer(
   customerId?: string,
 ): Promise<string> {
   const id = customerId ?? doc(collection(db, COL)).id;
-  await setDoc(doc(db, COL, id), { ...input, createdAt: serverTimestamp() });
+  const payload = stripUndefined({ ...input, createdAt: serverTimestamp() });
+  await setDoc(doc(db, COL, id), payload);
   return id;
 }
 
@@ -60,5 +75,5 @@ export async function updateCustomer(
   customerId: string,
   patch: Partial<CustomerInput>,
 ): Promise<void> {
-  await updateDoc(doc(db, COL, customerId), patch);
+  await updateDoc(doc(db, COL, customerId), stripUndefined(patch));
 }

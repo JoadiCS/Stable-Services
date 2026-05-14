@@ -28,6 +28,29 @@ function fromSnap(id: string, data: Record<string, unknown>): Visit {
   return { visitId: id, ...(data as Omit<Visit, 'visitId'>) };
 }
 
+/**
+ * Firestore rejects `undefined` field values ANYWHERE in the document. This
+ * recursive helper strips them out so partially-filled forms (techs leaving
+ * salt/tds blank, customers without assigned techs, etc.) don't blow up
+ * setDoc/updateDoc calls. Arrays are preserved as-is; nested objects are
+ * walked. Empty strings, 0, false, and null are all kept — only `undefined`
+ * is removed.
+ */
+function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((v) => stripUndefined(v)) as unknown as T;
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v === undefined) continue;
+      out[k] = stripUndefined(v);
+    }
+    return out as T;
+  }
+  return value;
+}
+
 async function runQuery(...constraints: QueryConstraint[]): Promise<Visit[]> {
   const q = query(collection(db, COL), ...constraints);
   const snap = await getDocs(q);
@@ -132,8 +155,8 @@ export async function updateVisitChemicals(
   additions: ChemicalAddition[],
 ): Promise<void> {
   await updateDoc(doc(db, COL, visitId), {
-    chemicalReadings: readings,
-    chemicalsAdded: additions,
+    chemicalReadings: stripUndefined(readings),
+    chemicalsAdded: stripUndefined(additions),
   });
 }
 
@@ -146,12 +169,12 @@ export async function updateVisitNotes(
 }
 
 export async function addVisitPhoto(visitId: string, photo: VisitPhoto): Promise<void> {
-  await updateDoc(doc(db, COL, visitId), { photos: arrayUnion(photo) });
+  await updateDoc(doc(db, COL, visitId), { photos: arrayUnion(stripUndefined(photo)) });
 }
 
 export type VisitInput = Omit<Visit, 'visitId'>;
 
 export async function createVisit(input: VisitInput): Promise<string> {
-  const ref = await addDoc(collection(db, COL), input);
+  const ref = await addDoc(collection(db, COL), stripUndefined(input) as VisitInput);
   return ref.id;
 }
