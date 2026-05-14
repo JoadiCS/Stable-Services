@@ -1,20 +1,76 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { useAuthUser } from '@/lib/auth';
-import { listVisitsForCustomer } from '@/lib/visits';
-import type { ServiceType, Visit } from '@/types/portal';
+import { getCustomer } from '@/lib/customers';
+import {
+  getLastCompletedVisitForCustomer,
+  getNextScheduledVisitForCustomer,
+  listVisitsForCustomer,
+} from '@/lib/visits';
+import { loadPricingConfig, monthlyRevenueFor, type PricingConfig } from '@/lib/planPricing';
+import { formatMonthlyRate, planLabel } from '@/lib/planLabel';
+import { SERVICE_DESCRIPTIONS } from '@/data/servicePlanDescriptions';
+import type { Customer, ServiceType, Visit } from '@/types/portal';
 import { formatVisitDate } from './visitDisplay';
 
-const SERVICE_LABEL: Record<ServiceType, string> = {
+const SERVICE_PILL: Record<ServiceType, string> = {
   pool: 'Pool',
   lawn: 'Lawn',
   pressure: 'Pressure',
   window: 'Window',
 };
 
+interface DashboardData {
+  customer: Customer | null;
+  pricing: PricingConfig | null;
+  nextVisit: Visit | null;
+  lastVisit: Visit | null;
+}
+
 export function DashboardPage() {
-  const { user } = useAuthUser();
+  const { user, loading: authLoading } = useAuthUser();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
   const firstName = deriveFirstName(user?.displayName, user?.email);
+  const uid = user?.uid;
+
+  useEffect(() => {
+    if (!uid) return;
+    let cancelled = false;
+    setData(null);
+    setErr(null);
+    (async () => {
+      try {
+        const customer = await getCustomer(uid);
+        if (!customer) {
+          if (!cancelled) {
+            setData({ customer: null, pricing: null, nextVisit: null, lastVisit: null });
+          }
+          return;
+        }
+        const todayISO = format(new Date(), 'yyyy-MM-dd');
+        const [pricing, nextVisit, lastVisit] = await Promise.all([
+          loadPricingConfig(),
+          safeGet(() => getNextScheduledVisitForCustomer(uid, todayISO)),
+          safeGet(() => getLastCompletedVisitForCustomer(uid)),
+        ]);
+        if (!cancelled) {
+          setData({ customer, pricing, nextVisit, lastVisit });
+        }
+      } catch (e) {
+        if (!cancelled) setErr(e instanceof Error ? e.message : 'Could not load your dashboard.');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [uid]);
+
+  if (authLoading || (!data && !err)) {
+    return <Loading />;
+  }
 
   return (
     <div>
@@ -44,59 +100,131 @@ export function DashboardPage() {
         </h1>
       </header>
 
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: '1.25rem',
-          marginBottom: '2.5rem',
-        }}
-      >
-        <Card label="Your Plan" title="Stable Standard">
-          <p style={cardMeta}>$139.99 / month</p>
-          <p style={cardBody}>
-            Weekly pool service · chemical balance · skim &amp; brush · equipment check.
-          </p>
-        </Card>
+      {err && (
+        <div
+          style={{
+            background: 'rgba(220,80,80,0.08)',
+            border: '1px solid rgba(220,80,80,0.35)',
+            color: '#f0a5a5',
+            fontSize: '0.85rem',
+            padding: '0.75rem 1rem',
+            marginBottom: '1.5rem',
+            borderRadius: 2,
+          }}
+        >
+          {err}
+        </div>
+      )}
 
-        <Card label="Next Appointment" title="Tuesday, May 19">
-          <p style={cardMeta}>9:00 AM</p>
-          <p style={cardBody}>
-            Your assigned technician will arrive within a 60-minute window.
-          </p>
-        </Card>
-
-        <Card label="Last Visit" title="May 12">
-          <p style={cardMeta}>Stable Report available</p>
-          <p style={cardBody}>
-            Chlorine, pH, and equipment status logged. Tap to review the latest report.
-          </p>
-        </Card>
-
-        <Card label="Need Service?" title="Request a visit">
-          <p style={cardBody}>
-            Repairs, leak checks, equipment swaps, or one-time cleanings — let us know
-            what you need.
-          </p>
-          <div style={{ marginTop: '1rem' }}>
-            <Link to="/portal/requests/new" className="ss-btn-primary">
-              New Request →
-            </Link>
-          </div>
-        </Card>
-      </section>
-
-      <RecentVisits customerId={user?.uid} />
+      {data?.customer ? (
+        <>
+          <CustomerTiles
+            customer={data.customer}
+            pricing={data.pricing}
+            nextVisit={data.nextVisit}
+            lastVisit={data.lastVisit}
+          />
+          <RecentVisits customerId={data.customer.customerId} />
+        </>
+      ) : (
+        <StaffNote />
+      )}
     </div>
   );
 }
 
-function RecentVisits({ customerId }: { customerId: string | undefined }) {
+/* ─────────────────────── Customer tiles ─────────────────────── */
+function CustomerTiles({
+  customer,
+  pricing,
+  nextVisit,
+  lastVisit,
+}: {
+  customer: Customer;
+  pricing: PricingConfig | null;
+  nextVisit: Visit | null;
+  lastVisit: Visit | null;
+}) {
+  const monthlyAmount = pricing ? monthlyRevenueFor(customer, pricing) : (customer.monthlyRate ?? 0);
+  const description = SERVICE_DESCRIPTIONS[customer.serviceType];
+
+  return (
+    <section
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+        gap: '1.25rem',
+        marginBottom: '2.5rem',
+      }}
+    >
+      <Card label="Your Plan" title={planLabel(customer.plan)}>
+        <p style={cardMeta}>{formatMonthlyRate(monthlyAmount)}</p>
+        <p style={cardBody}>{description}</p>
+      </Card>
+
+      <Card label="Next Appointment" title={nextVisit ? formatScheduledDate(nextVisit.scheduledDate) : '—'}>
+        {nextVisit ? (
+          <>
+            <p style={cardMeta}>{windowLabel(nextVisit.scheduledWindow)}</p>
+            <p style={cardBody}>
+              Your tech {nextVisit.techName ? <>({nextVisit.techName})</> : null} will arrive within the window above.
+            </p>
+          </>
+        ) : (
+          <p style={cardBody}>
+            Your next visit will appear here once it's been scheduled.
+          </p>
+        )}
+      </Card>
+
+      <Card
+        label="Last Visit"
+        title={lastVisit ? formatVisitDate(lastVisit) : '—'}
+      >
+        {lastVisit ? (
+          <>
+            <p style={cardMeta}>Stable Report available</p>
+            <Link
+              to={`/portal/visit/${lastVisit.visitId}`}
+              style={{
+                color: '#c9a84c',
+                fontSize: '0.78rem',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                textDecoration: 'none',
+              }}
+            >
+              View Report →
+            </Link>
+          </>
+        ) : (
+          <p style={cardBody}>
+            Your first Stable Report will land here after your first service.
+          </p>
+        )}
+      </Card>
+
+      <Card label="Need Service?" title="Request a visit">
+        <p style={cardBody}>
+          Repairs, leak checks, equipment swaps, or one-time cleanings — let us know
+          what you need.
+        </p>
+        <div style={{ marginTop: '1rem' }}>
+          <Link to="/portal/requests/new" className="ss-btn-primary">
+            New Request →
+          </Link>
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+/* ─────────────────────── Recent Visits ─────────────────────── */
+function RecentVisits({ customerId }: { customerId: string }) {
   const [visits, setVisits] = useState<Visit[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!customerId) return;
     let cancelled = false;
     setVisits(null);
     setErr(null);
@@ -145,7 +273,10 @@ function RecentVisits({ customerId }: { customerId: string | undefined }) {
       ) : visits === null ? (
         <Empty>Loading…</Empty>
       ) : visits.length === 0 ? (
-        <Empty>No completed visits yet. Once your first service is wrapped, the report appears here.</Empty>
+        <Empty>
+          No completed visits yet. Once your tech finishes a service, the Stable
+          Report will show up here.
+        </Empty>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.75rem' }}>
           {visits.map((v) => (
@@ -176,11 +307,21 @@ function RecentVisits({ customerId }: { customerId: string | undefined }) {
                   >
                     {formatVisitDate(v)}
                   </div>
-                  <div style={{ color: '#8b95a7', fontSize: '0.82rem', marginTop: '0.25rem' }}>
-                    {SERVICE_LABEL[v.serviceType]} · {v.techName || 'Tech'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.3rem' }}>
+                    <ServicePill type={v.serviceType} />
+                    <span style={{ color: '#8b95a7', fontSize: '0.78rem' }}>
+                      {v.techName || 'Stable Services team'}
+                    </span>
                   </div>
                 </div>
-                <span style={{ color: '#c9a84c', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                <span
+                  style={{
+                    color: '#c9a84c',
+                    fontSize: '0.78rem',
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                  }}
+                >
                   View Report →
                 </span>
               </Link>
@@ -189,6 +330,85 @@ function RecentVisits({ customerId }: { customerId: string | undefined }) {
         </ul>
       )}
     </section>
+  );
+}
+
+function ServicePill({ type }: { type: ServiceType }) {
+  return (
+    <span
+      style={{
+        padding: '0.2rem 0.5rem',
+        fontSize: '0.62rem',
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        borderRadius: 2,
+        background: 'rgba(201,168,76,0.12)',
+        color: '#c9a84c',
+      }}
+    >
+      {SERVICE_PILL[type]}
+    </span>
+  );
+}
+
+/* ─────────────────────── Empty / loading / staff fallback ─────────────────────── */
+
+function StaffNote() {
+  return (
+    <section
+      style={{
+        background: '#111827',
+        border: '1px solid rgba(201,168,76,0.18)',
+        borderRadius: 2,
+        padding: '2.25rem 2rem',
+        textAlign: 'center',
+        maxWidth: 560,
+      }}
+    >
+      <div
+        style={{
+          fontSize: '0.62rem',
+          letterSpacing: '0.2em',
+          textTransform: 'uppercase',
+          color: '#c9a84c',
+          marginBottom: '0.6rem',
+        }}
+      >
+        Customer Portal
+      </div>
+      <h2
+        style={{
+          fontFamily: 'Cormorant Garamond, Georgia, serif',
+          fontSize: '1.5rem',
+          fontWeight: 300,
+          marginBottom: '0.75rem',
+        }}
+      >
+        This dashboard is for customer accounts.
+      </h2>
+      <p style={{ color: '#8b95a7', fontSize: '0.9rem', lineHeight: 1.7, marginBottom: '1.25rem' }}>
+        To manage operations, visit the admin dashboard.
+      </p>
+      <Link to="/admin/dashboard" className="ss-btn-primary">
+        Go to Admin →
+      </Link>
+    </section>
+  );
+}
+
+function Loading() {
+  return (
+    <div
+      style={{
+        color: '#8b95a7',
+        fontSize: '0.85rem',
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        padding: '2rem 0',
+      }}
+    >
+      Loading your dashboard…
+    </div>
   );
 }
 
@@ -271,6 +491,16 @@ const cardBody: CSSProperties = {
   fontWeight: 300,
 };
 
+function formatScheduledDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  return format(new Date(y, m - 1, d), 'EEEE, MMM d');
+}
+
+function windowLabel(w: 'AM' | 'PM'): string {
+  return w === 'AM' ? 'AM window (7am – 12pm)' : 'PM window (12pm – 5pm)';
+}
+
 function deriveFirstName(displayName: string | null | undefined, email: string | null | undefined): string {
   if (displayName) {
     const first = displayName.trim().split(/\s+/)[0];
@@ -284,4 +514,12 @@ function deriveFirstName(displayName: string | null | undefined, email: string |
     }
   }
   return 'neighbor';
+}
+
+async function safeGet<T>(fn: () => Promise<T | null>): Promise<T | null> {
+  try {
+    return await fn();
+  } catch {
+    return null;
+  }
 }

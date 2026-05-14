@@ -4,17 +4,16 @@ import { signOut, useAuthUser } from '@/lib/auth';
 import { siteConfig } from '@/data/siteConfig';
 
 interface NavItem {
-  to?: string;
+  to: string;
   label: string;
   end?: boolean;
-  comingSoon?: boolean;
 }
 
 const navItems: NavItem[] = [
   { to: '/portal/dashboard', label: 'Dashboard', end: true },
-  { label: 'My Service', comingSoon: true },
+  { to: '/portal/service', label: 'My Service' },
   { to: '/portal/requests', label: 'Requests' },
-  { label: 'Account', comingSoon: true },
+  { to: '/portal/account', label: 'Account' },
 ];
 
 export function PortalShell() {
@@ -167,42 +166,25 @@ function PortalNavList({ onNavigate }: { onNavigate: () => void }) {
     >
       {navItems.map((item) => (
         <li key={item.label}>
-          {item.to ? (
-            <NavLink
-              to={item.to}
-              end={item.end}
-              onClick={onNavigate}
-              style={({ isActive }) => ({
-                display: 'block',
-                padding: '0.7rem 0.9rem',
-                fontSize: '0.78rem',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: isActive ? '#0a0f1e' : '#d6d2c4',
-                background: isActive ? '#c9a84c' : 'transparent',
-                borderRadius: 2,
-                textDecoration: 'none',
-                fontWeight: isActive ? 500 : 400,
-              })}
-            >
-              {item.label}
-            </NavLink>
-          ) : (
-            <span
-              style={{
-                display: 'block',
-                padding: '0.7rem 0.9rem',
-                fontSize: '0.78rem',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: '#5a6373',
-                cursor: 'not-allowed',
-              }}
-              title="Coming soon"
-            >
-              {item.label}
-            </span>
-          )}
+          <NavLink
+            to={item.to}
+            end={item.end}
+            onClick={onNavigate}
+            style={({ isActive }) => ({
+              display: 'block',
+              padding: '0.7rem 0.9rem',
+              fontSize: '0.78rem',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: isActive ? '#0a0f1e' : '#d6d2c4',
+              background: isActive ? '#c9a84c' : 'transparent',
+              borderRadius: 2,
+              textDecoration: 'none',
+              fontWeight: isActive ? 500 : 400,
+            })}
+          >
+            {item.label}
+          </NavLink>
         </li>
       ))}
     </ul>

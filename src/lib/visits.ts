@@ -97,6 +97,41 @@ export async function listVisitsForCustomer(customerId: string): Promise<Visit[]
   );
 }
 
+/**
+ * The soonest scheduled visit on or after `fromISO` for a customer.
+ * Requires composite index on customerId + status + scheduledDate ASC.
+ */
+export async function getNextScheduledVisitForCustomer(
+  customerId: string,
+  fromISO: string,
+): Promise<Visit | null> {
+  const results = await runQuery(
+    where('customerId', '==', customerId),
+    where('status', '==', 'scheduled'),
+    where('scheduledDate', '>=', fromISO),
+    orderBy('scheduledDate', 'asc'),
+    limit(1),
+  );
+  return results[0] ?? null;
+}
+
+/**
+ * The most recently completed visit (with a published report) for a
+ * customer. Ordered by completedAt desc.
+ */
+export async function getLastCompletedVisitForCustomer(
+  customerId: string,
+): Promise<Visit | null> {
+  const results = await runQuery(
+    where('customerId', '==', customerId),
+    where('status', '==', 'completed'),
+    where('reportGenerated', '==', true),
+    orderBy('completedAt', 'desc'),
+    limit(1),
+  );
+  return results[0] ?? null;
+}
+
 export async function listVisitsForWeek(
   weekStartISO: string,
   weekEndISO: string,

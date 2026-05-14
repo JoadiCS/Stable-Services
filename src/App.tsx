@@ -27,6 +27,8 @@ import { DashboardPage } from './components/portal/DashboardPage';
 import { RequestsPage } from './components/portal/RequestsPage';
 import { NewRequestPage } from './components/portal/NewRequestPage';
 import { VisitReportPage } from './components/portal/VisitReportPage';
+import { PortalServicePage } from './components/portal/ServicePage';
+import { PortalAccountPage } from './components/portal/AccountPage';
 
 import { AdminShell } from './components/admin/AdminShell';
 import { AdminProtectedRoute } from './components/admin/AdminProtectedRoute';
@@ -110,6 +112,8 @@ export default function App() {
               }
             >
               <Route path="/portal/dashboard" element={<DashboardPage />} />
+              <Route path="/portal/service" element={<PortalServicePage />} />
+              <Route path="/portal/account" element={<PortalAccountPage />} />
               <Route path="/portal/requests" element={<RequestsPage />} />
               <Route path="/portal/requests/new" element={<NewRequestPage />} />
               <Route path="/portal/visit/:visitId" element={<VisitReportPage />} />
