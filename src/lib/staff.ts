@@ -3,7 +3,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -31,23 +30,29 @@ function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
  * Returns all techs eligible for assignment. Excludes staff explicitly
  * marked active: false. Staff records without an `active` field are
  * treated as active (legacy docs created before the field existed).
+ *
+ * Sorting is done client-side because Firestore's orderBy silently drops
+ * docs missing the order-by field — we don't want a staff doc without a
+ * lastName to vanish from the roster.
  */
 export async function listTechs(): Promise<StaffMember[]> {
   const snap = await getDocs(
     query(
       collection(db, COL),
       where('role', 'in', ['tech', 'lead_tech', 'owner']),
-      orderBy('lastName'),
     ),
   );
   return snap.docs
     .map((d) => fromSnap(d.id, d.data() as Record<string, unknown>))
-    .filter((s) => s.active !== false);
+    .filter((s) => s.active !== false)
+    .sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
 }
 
 export async function listAllStaff(): Promise<StaffMember[]> {
-  const snap = await getDocs(query(collection(db, COL), orderBy('lastName')));
-  return snap.docs.map((d) => fromSnap(d.id, d.data() as Record<string, unknown>));
+  const snap = await getDocs(query(collection(db, COL)));
+  return snap.docs
+    .map((d) => fromSnap(d.id, d.data() as Record<string, unknown>))
+    .sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
 }
 
 export async function getStaffMember(uid: string): Promise<StaffMember | null> {

@@ -4,7 +4,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -44,9 +43,15 @@ export async function listCustomers(opts: ListCustomersOpts = {}): Promise<Custo
   const constraints: QueryConstraint[] = [];
   if (opts.status) constraints.push(where('status', '==', opts.status));
   if (opts.serviceType) constraints.push(where('serviceType', '==', opts.serviceType));
-  constraints.push(orderBy('lastName'));
+  // NOTE: we intentionally sort client-side rather than via orderBy('lastName').
+  // Firestore's orderBy silently EXCLUDES docs missing the order-by field, which
+  // caused the visit generator to find 0 customers when records lacked lastName.
+  // Sorting client-side also dodges the composite index requirement that pairs
+  // with the status filter.
   const snap = await getDocs(query(collection(db, COL), ...constraints));
-  return snap.docs.map((d) => fromSnap(d.id, d.data() as Record<string, unknown>));
+  const rows = snap.docs.map((d) => fromSnap(d.id, d.data() as Record<string, unknown>));
+  rows.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+  return rows;
 }
 
 export async function getCustomer(customerId: string): Promise<Customer | null> {

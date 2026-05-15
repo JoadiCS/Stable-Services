@@ -1,14 +1,24 @@
 import { useModal } from '@/context/ModalContext';
 import { heroOffer } from '@/data/heroOffer';
+import { useSiteContent } from '@/lib/siteContent';
 
 /**
- * Hero-right "competitive offer" card. Replaces the original video panel
- * to drive conversion. Copy lives in `src/data/heroOffer.ts` so this
- * component never has to change to refresh the offer.
+ * Hero-right "competitive offer" card. Static copy lives in
+ * `src/data/heroOffer.ts`; the high-churn fields (eyebrow, price,
+ * waivedFees, finePrint) are overlaid from /config/site so the owner
+ * can edit them in /admin/settings/site-content without a code push.
  */
 export function HeroOffer() {
   const { openFunnel } = useModal();
-  const offer = heroOffer;
+  const site = useSiteContent();
+  const offer = {
+    ...heroOffer,
+    eyebrow: site.eyebrow,
+    finalPriceAmount: site.finalPriceAmount,
+    finalPriceCaption: site.finalPriceCaption,
+    finePrint: site.finePrint,
+    waivedFees: site.waivedFees,
+  };
 
   return (
     <div className="ss-hero-right ss-hero-offer-wrap">

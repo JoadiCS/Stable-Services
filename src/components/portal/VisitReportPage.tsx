@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getVisit } from '@/lib/visits';
 import {
-  POOL_RANGES,
   RANGE_COLORS,
   statusFor,
   type RangeKey,
 } from '@/data/poolRanges';
+import { usePoolRanges } from '@/lib/usePoolRanges';
 import type { PhotoType, ServiceType, Visit } from '@/types/portal';
 import { siteConfig } from '@/data/siteConfig';
 import { formatVisitDate } from './visitDisplay';
@@ -217,6 +217,7 @@ function ChecklistSummary({ visit }: { visit: Visit }) {
 
 function ChemicalsSummary({ visit }: { visit: Visit }) {
   const r = visit.chemicalReadings;
+  const ranges = usePoolRanges();
   if (!r) return null;
   return (
     <ReportSection title="Water Chemistry">
@@ -230,7 +231,7 @@ function ChemicalsSummary({ visit }: { visit: Visit }) {
         {READINGS_ORDER.map((key) => {
           const value = r[key];
           if (value === undefined || Number.isNaN(value)) return null;
-          const spec = POOL_RANGES[key];
+          const spec = ranges[key];
           const st = statusFor(key, value);
           const color = RANGE_COLORS[st];
           return (

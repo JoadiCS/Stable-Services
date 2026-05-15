@@ -9,7 +9,7 @@ import {
 } from '@/lib/visits';
 import { loadPricingConfig, monthlyRevenueFor } from '@/lib/planPricing';
 import { countServiceRequestsSince } from '@/lib/serviceRequests';
-import { statusFor, type RangeKey } from '@/data/poolRanges';
+import { loadPoolRangesConfig, statusFor, type RangeKey } from '@/data/poolRanges';
 import type { Customer, Visit } from '@/types/portal';
 
 interface Metrics {
@@ -336,6 +336,9 @@ async function loadMetrics(): Promise<Metrics> {
   const newLeadsFromRequests = await countServiceRequestsSince(sevenDaysAgo);
   const newLeads = customersInLast7 + newLeadsFromRequests;
 
+  // Ensure pool-range config is loaded before we compute statuses so
+  // statusFor() reads the admin-tuned values rather than defaults.
+  await loadPoolRangesConfig();
   const outOfRangeCustomers = await findPoolOutOfRange(active);
   const weeklyCompletedCounts = await loadEightWeekHistory();
 

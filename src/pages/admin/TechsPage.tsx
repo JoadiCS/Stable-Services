@@ -1,22 +1,42 @@
 import { useEffect, useState } from 'react';
 import {
-  createStaffMember,
   listAllStaff,
   STAFF_ROLE_OPTIONS,
   updateStaffMember,
 } from '@/lib/staff';
+import {
+  createPendingStaff,
+  deletePendingStaff,
+  listPendingStaff,
+  type StaffPending,
+} from '@/lib/staffPending';
 import type { StaffMember, StaffRole } from '@/types/portal';
 
+interface RosterRow {
+  kind: 'linked' | 'pending';
+  member?: StaffMember;
+  pending?: StaffPending;
+}
+
 export function TechsPage() {
-  const [staff, setStaff] = useState<StaffMember[] | null>(null);
+  const [rows, setRows] = useState<RosterRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
   async function reload() {
     setErr(null);
     try {
-      const list = await listAllStaff();
-      setStaff(list);
+      const [linked, pending] = await Promise.all([
+        listAllStaff(),
+        listPendingStaff(),
+      ]);
+      const linkedEmails = new Set(linked.map((s) => s.email.toLowerCase()));
+      const pendingFiltered = pending.filter((p) => !linkedEmails.has(p.email.toLowerCase()));
+      const combined: RosterRow[] = [
+        ...linked.map<RosterRow>((m) => ({ kind: 'linked', member: m })),
+        ...pendingFiltered.map<RosterRow>((p) => ({ kind: 'pending', pending: p })),
+      ];
+      setRows(combined);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not load staff.');
     }
@@ -81,15 +101,19 @@ export function TechsPage() {
         </div>
       )}
 
-      {staff === null ? (
+      {rows === null ? (
         <Empty>Loading…</Empty>
-      ) : staff.length === 0 ? (
-        <Empty>No staff yet. Use “Add Tech” to create the first record.</Empty>
+      ) : rows.length === 0 ? (
+        <Empty>No staff yet. Use "Add Tech" to create the first record.</Empty>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.6rem' }}>
-          {staff.map((s) => (
-            <StaffRow key={s.uid} member={s} onUpdated={reload} />
-          ))}
+          {rows.map((r) =>
+            r.kind === 'linked' && r.member ? (
+              <StaffRow key={`linked-${r.member.uid}`} member={r.member} onUpdated={reload} />
+            ) : r.pending ? (
+              <PendingRow key={`pending-${r.pending.email}`} pending={r.pending} onUpdated={reload} />
+            ) : null,
+          )}
         </ul>
       )}
 
@@ -120,19 +144,7 @@ function StaffRow({ member, onUpdated }: { member: StaffMember; onUpdated: () =>
   }
 
   return (
-    <li
-      style={{
-        background: '#0a0f1e',
-        border: '1px solid rgba(201,168,76,0.18)',
-        borderRadius: 2,
-        padding: '1rem 1.1rem',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '0.75rem',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}
-    >
+    <li style={rowStyle}>
       <div>
         <div style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: '1.15rem', fontWeight: 300 }}>
           {member.firstName} {member.lastName}
@@ -152,8 +164,42 @@ function StaffRow({ member, onUpdated }: { member: StaffMember; onUpdated: () =>
   );
 }
 
+function PendingRow({ pending, onUpdated }: { pending: StaffPending; onUpdated: () => void }) {
+  const [busy, setBusy] = useState(false);
+
+  async function remove() {
+    if (!confirm(`Remove pending invite for ${pending.email}?`)) return;
+    setBusy(true);
+    try {
+      await deletePendingStaff(pending.email);
+      onUpdated();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li style={rowStyle}>
+      <div>
+        <div style={{ fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: '1.15rem', fontWeight: 300 }}>
+          {pending.firstName} {pending.lastName}
+        </div>
+        <div style={{ color: '#8b95a7', fontSize: '0.82rem', marginTop: '0.25rem' }}>
+          {pending.email} {pending.phone ? `· ${pending.phone}` : ''}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Pill>{pending.role}</Pill>
+        <Pill state="warn">Pending sign-in</Pill>
+        <button onClick={() => void remove()} disabled={busy} className="ss-btn-ghost">
+          Remove
+        </button>
+      </div>
+    </li>
+  );
+}
+
 function AddTechModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [uid, setUid] = useState('');
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -166,14 +212,15 @@ function AddTechModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
     setBusy(true);
     setErr(null);
     try {
-      if (!uid.trim()) throw new Error('UID is required — paste the new tech\'s Firebase Auth UID after they create their account.');
-      await createStaffMember(uid.trim(), {
-        email: email.trim(),
+      const trimmed = email.trim();
+      if (!trimmed) throw new Error('Email is required.');
+      if (!firstName.trim() && !lastName.trim()) throw new Error('At least one name field is required.');
+      await createPendingStaff({
+        email: trimmed,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phone: phone.trim(),
+        phone: phone.trim() || undefined,
         role,
-        active: true,
       });
       onCreated();
     } catch (e) {
@@ -223,14 +270,14 @@ function AddTechModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
         )}
 
         <p style={{ color: '#8b95a7', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.7 }}>
-          The tech first signs themselves up at <strong style={{ color: '#c9a84c' }}>/tech/login → Forgot Password</strong>{' '}
-          (or you create their account in Firebase Console). Then paste their Auth UID below
-          so this record links to their login.
+          Enter the tech's name + email. The record sits as "Pending sign-in" until the
+          tech signs in at <strong style={{ color: '#c9a84c' }}>/tech/login</strong> with the
+          same email — at that moment the record auto-links to their Firebase account.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
-          <Field label="Firebase Auth UID">
-            <input value={uid} onChange={(e) => setUid(e.target.value)} style={textField} />
+          <Field label="Email">
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={textField} />
           </Field>
           <Field label="Role">
             <select value={role} onChange={(e) => setRole(e.target.value as StaffRole)} style={textField}>
@@ -245,10 +292,7 @@ function AddTechModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           <Field label="Last name">
             <input value={lastName} onChange={(e) => setLastName(e.target.value)} style={textField} />
           </Field>
-          <Field label="Email">
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={textField} />
-          </Field>
-          <Field label="Phone">
+          <Field label="Phone (optional)">
             <input value={phone} onChange={(e) => setPhone(e.target.value)} style={textField} />
           </Field>
         </div>
@@ -331,6 +375,18 @@ function Empty({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+const rowStyle: React.CSSProperties = {
+  background: '#0a0f1e',
+  border: '1px solid rgba(201,168,76,0.18)',
+  borderRadius: 2,
+  padding: '1rem 1.1rem',
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '0.75rem',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+};
 
 const overlay: React.CSSProperties = {
   position: 'fixed',

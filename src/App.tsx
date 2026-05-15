@@ -40,6 +40,9 @@ import { SchedulePage } from './pages/admin/SchedulePage';
 import { TechsPage } from './pages/admin/TechsPage';
 import { CustomerEditPage } from './pages/admin/CustomerEditPage';
 import { PricingSettingsPage } from './pages/admin/PricingSettingsPage';
+import { ChecklistsSettingsPage } from './pages/admin/ChecklistsSettingsPage';
+import { PoolRangesSettingsPage } from './pages/admin/PoolRangesSettingsPage';
+import { SiteContentSettingsPage } from './pages/admin/SiteContentSettingsPage';
 
 import { TechLoginPage } from './pages/tech/TechLoginPage';
 import { TechRoutePage } from './pages/tech/TechRoutePage';
@@ -134,6 +137,9 @@ export default function App() {
               <Route path="/admin/schedule" element={<SchedulePage />} />
               <Route path="/admin/techs" element={<TechsPage />} />
               <Route path="/admin/settings/pricing" element={<PricingSettingsPage />} />
+              <Route path="/admin/settings/checklists" element={<ChecklistsSettingsPage />} />
+              <Route path="/admin/settings/pool-ranges" element={<PoolRangesSettingsPage />} />
+              <Route path="/admin/settings/site-content" element={<SiteContentSettingsPage />} />
               <Route path="/admin/requests" element={<AdminRequestsPage />} />
             </Route>
 

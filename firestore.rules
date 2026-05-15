@@ -59,9 +59,39 @@ service cloud.firestore {
 
     match /staff/{staffId} {
       allow read: if isStaff();
+      // Owner manages the roster directly.
       allow write: if isOwner();
+      // First-sign-in self-claim: the tech can create their own /staff/{uid}
+      // record only if a matching /staffPending/{email} entry exists. The
+      // email on the new staff doc must match their auth token email.
+      allow create: if request.auth.uid == staffId
+        && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/staffPending/$(request.auth.token.email))
+        && request.resource.data.email == request.auth.token.email;
     }
 
+    match /staffPending/{emailKey} {
+      // Staff see the full pending roster. Signed-in users with matching
+      // email can read their own pending entry (so the client can claim it
+      // on first sign-in).
+      allow read: if isStaff()
+        || (isSignedIn() && request.auth.token.email == emailKey);
+      // Admins create + edit pending invites.
+      allow create, update: if isOwnerOrAdmin();
+      // Either the admin or the matching tech may delete (the tech deletes
+      // their own pending row after the claim succeeds).
+      allow delete: if isOwnerOrAdmin()
+        || (isSignedIn() && request.auth.token.email == emailKey);
+    }
+
+    // Site copy that the marketing site needs to read without an auth user.
+    match /config/site {
+      allow read: if true;
+      allow write: if isOwnerOrAdmin();
+    }
+
+    // Other admin-managed config (pricing, checklists, poolRanges) is
+    // staff-only readable.
     match /config/{configId} {
       allow read: if isStaff();
       allow write: if isOwnerOrAdmin();

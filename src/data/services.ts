@@ -17,7 +17,16 @@ export const serviceTabs: ServiceTab[] = [
   { key: 'repairs', label: 'Repairs & Upgrades' },
 ];
 
-/** Service options shown in the funnel's first step */
+/**
+ * Service options shown in the funnel's first step.
+ *
+ * TODO (admin-managed config candidate): the funnel option list is tightly
+ * coupled to Square checkout URLs (plans.ts) and the FunnelModal's per-key
+ * conditional branches (FunnelModal.tsx, Services.tsx). Moving this to a
+ * /config/funnelServices doc requires also generalizing those branch points,
+ * which is more invasive than the other admin-managed configs we've moved
+ * over. Leave hard-coded until that refactor is on the table.
+ */
 export interface FunnelServiceOption {
   key: Exclude<ServiceKey, 'repairs'>;
   name: string;

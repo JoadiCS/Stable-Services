@@ -11,7 +11,7 @@ import {
 import { listCustomers } from '@/lib/customers';
 import { listTechs } from '@/lib/staff';
 import { createVisit, listVisitsForWeek, type VisitInput } from '@/lib/visits';
-import { getChecklistFor } from '@/data/checklists';
+import { getChecklistForAsync } from '@/data/checklists';
 import type { StaffMember, Visit } from '@/types/portal';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -77,39 +77,72 @@ export function SchedulePage() {
     try {
       const nextStart = startOfWeek(addWeeks(anchor, 1), { weekStartsOn: 1 });
       const nextEnd = endOfWeek(nextStart, { weekStartsOn: 1 });
-      const customers = await listCustomers({ status: 'active' });
       const startISO = format(nextStart, 'yyyy-MM-dd');
       const endISO = format(nextEnd, 'yyyy-MM-dd');
+
+      const customers = await listCustomers({ status: 'active' });
       const existing = await listVisitsForWeek(startISO, endISO);
       const existingByCustomer = new Set(existing.map((v) => v.customerId));
 
       const techsList = await safeListTechs();
       const techById = new Map(techsList.map((t) => [t.uid, t]));
 
+      const skips: { customerId: string; name: string; reason: string }[] = [];
       let created = 0;
+
       for (const c of customers) {
-        if (existingByCustomer.has(c.customerId)) continue;
+        const name = `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || c.customerId;
+        if (existingByCustomer.has(c.customerId)) {
+          skips.push({ customerId: c.customerId, name, reason: 'already has a visit this week' });
+          continue;
+        }
+        if (typeof c.serviceDayOfWeek !== 'number' || c.serviceDayOfWeek < 0 || c.serviceDayOfWeek > 6) {
+          skips.push({ customerId: c.customerId, name, reason: `invalid serviceDayOfWeek (${c.serviceDayOfWeek})` });
+          continue;
+        }
+        if (!c.serviceType) {
+          skips.push({ customerId: c.customerId, name, reason: 'missing serviceType' });
+          continue;
+        }
+
         const visitDate = dateForDayOfWeek(nextStart, c.serviceDayOfWeek);
         const dateISO = format(visitDate, 'yyyy-MM-dd');
         const tech = c.assignedTechId ? techById.get(c.assignedTechId) : null;
         const input: VisitInput = {
           customerId: c.customerId,
-          customerName: `${c.firstName} ${c.lastName}`.trim(),
+          customerName: name,
           customerAddress: [c.address, c.city].filter(Boolean).join(', '),
+          // Unassigned visits are valid — admin can assign a tech later.
           techId: c.assignedTechId ?? '',
           techName: tech ? `${tech.firstName} ${tech.lastName}`.trim() : '',
           serviceType: c.serviceType,
           scheduledDate: dateISO,
-          scheduledWindow: c.serviceTimeWindow,
+          scheduledWindow: c.serviceTimeWindow ?? 'AM',
           status: 'scheduled',
-          checklist: getChecklistFor(c.serviceType),
+          checklist: await getChecklistForAsync(c.serviceType),
           photos: [],
           reportGenerated: false,
         };
         await createVisit(input);
         created++;
       }
-      setToast(`Created ${created} visits for ${format(nextStart, 'MMM d')} – ${format(nextEnd, 'MMM d')}.`);
+
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[generate-visits]', {
+          window: { start: startISO, end: endISO },
+          customersFetched: customers.length,
+          existingVisitsInWindow: existing.length,
+          created,
+          skipped: skips,
+        });
+      }
+
+      setToast(
+        `Created ${created} visits for ${format(nextStart, 'MMM d')} – ${format(nextEnd, 'MMM d')}` +
+          (skips.length ? ` · ${skips.length} skipped (see console for details)` : '.'),
+      );
+      await reload();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not generate visits.');
     } finally {

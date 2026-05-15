@@ -12,7 +12,8 @@ import {
 import { uploadPhotoToCloudinary } from '@/lib/cloudinary';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { POOL_RANGES, RANGE_COLORS, statusFor, type RangeKey } from '@/data/poolRanges';
+import { RANGE_COLORS, statusFor, type RangeKey } from '@/data/poolRanges';
+import { usePoolRanges } from '@/lib/usePoolRanges';
 import { useDebouncedSave, type SaveStatus } from '@/lib/useDebouncedSave';
 import type {
   ChecklistItem,
@@ -354,6 +355,7 @@ function ChemicalsSection({
   const [readings, setReadings] = useState<ChemicalReadings>(visit.chemicalReadings ?? {});
   const additionsRef = useRef<ChemicalAddition[]>(visit.chemicalsAdded ?? []);
   const { status, schedule } = useDebouncedSave();
+  const ranges = usePoolRanges();
 
   // Keep ref in sync if visit changes externally
   useEffect(() => {
@@ -380,7 +382,7 @@ function ChemicalsSection({
         }}
       >
         {READINGS_KEYS.map((key) => {
-          const spec = POOL_RANGES[key];
+          const spec = ranges[key];
           const value = readings[key];
           const st = statusFor(key, value);
           const color = RANGE_COLORS[st];

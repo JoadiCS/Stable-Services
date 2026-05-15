@@ -1,14 +1,17 @@
 import { useModal } from '@/context/ModalContext';
 import { heroOffer } from '@/data/heroOffer';
+import { useSiteContent } from '@/lib/siteContent';
 
 /**
  * Thin gold strip pinned above the nav to reinforce the current promo.
- * To hide it (e.g. when the promo expires), flip `bannerActive` to false
- * in `src/data/heroOffer.ts`.
+ * Banner copy + on/off state lives in /config/site (admin-editable via
+ * /admin/settings/site-content). Falls back to heroOffer.ts defaults when
+ * the doc is missing.
  */
 export function PromoBanner() {
   const { openFunnel } = useModal();
-  if (!heroOffer.bannerActive) return null;
+  const site = useSiteContent();
+  if (!site.bannerActive) return null;
 
   return (
     <button
@@ -20,10 +23,10 @@ export function PromoBanner() {
           plan: heroOffer.ctaPlan,
         })
       }
-      aria-label={`${heroOffer.bannerText} ${heroOffer.bannerCtaLabel}`}
+      aria-label={`${site.bannerText} ${site.bannerCtaLabel}`}
     >
-      <span className="ss-promo-banner-text">{heroOffer.bannerText}</span>
-      <span className="ss-promo-banner-cta">{heroOffer.bannerCtaLabel}</span>
+      <span className="ss-promo-banner-text">{site.bannerText}</span>
+      <span className="ss-promo-banner-cta">{site.bannerCtaLabel}</span>
     </button>
   );
 }

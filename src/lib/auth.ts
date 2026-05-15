@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { claimPendingStaffForUser } from './staffPending';
 import type { StaffMember, StaffRole } from '@/types/portal';
 
 export type { StaffRole };
@@ -24,7 +25,15 @@ export function useAuthUser(): AuthUserState {
   useEffect(() => {
     const unsub = onAuthStateChanged(
       auth,
-      (user) => setState({ user, loading: false }),
+      (user) => {
+        setState({ user, loading: false });
+        // Fire-and-forget: if this user has a pending /staffPending record
+        // matching their email, promote it to /staff/{uid}. No-op for
+        // customers (no pending record → rule denies the read silently).
+        if (user) {
+          void claimPendingStaffForUser(user);
+        }
+      },
       () => setState({ user: null, loading: false }),
     );
     return unsub;

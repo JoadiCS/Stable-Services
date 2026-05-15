@@ -8,7 +8,13 @@ const navItems = [
   { to: '/admin/schedule', label: 'Schedule' },
   { to: '/admin/techs', label: 'Techs' },
   { to: '/admin/requests', label: 'Service Requests' },
+];
+
+const settingsNavItems = [
   { to: '/admin/settings/pricing', label: 'Pricing' },
+  { to: '/admin/settings/checklists', label: 'Checklists' },
+  { to: '/admin/settings/pool-ranges', label: 'Pool Ranges' },
+  { to: '/admin/settings/site-content', label: 'Site Content' },
 ];
 
 export function AdminShell() {
@@ -114,6 +120,43 @@ export function AdminShell() {
                 })}
               >
                 {item.label}
+              </NavLink>
+            </li>
+          ))}
+
+          <li
+            style={{
+              marginTop: '1rem',
+              paddingTop: '0.6rem',
+              borderTop: '0.5px solid rgba(201,168,76,0.15)',
+              fontSize: '0.6rem',
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              color: '#5a6373',
+              padding: '0.6rem 0.9rem 0.3rem',
+            }}
+          >
+            Settings
+          </li>
+          {settingsNavItems.map((item) => (
+            <li key={item.to}>
+              <NavLink
+                to={item.to}
+                onClick={() => setMobileOpen(false)}
+                style={({ isActive }) => ({
+                  display: 'block',
+                  padding: '0.55rem 0.9rem',
+                  fontSize: '0.72rem',
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color: isActive ? '#0a0f1e' : '#a8a08e',
+                  background: isActive ? '#c9a84c' : 'transparent',
+                  borderRadius: 2,
+                  textDecoration: 'none',
+                  fontWeight: isActive ? 500 : 400,
+                })}
+              >
+                · {item.label}
               </NavLink>
             </li>
           ))}

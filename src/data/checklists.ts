@@ -1,6 +1,8 @@
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import type { ChecklistItem, ServiceType } from '@/types/portal';
 
-interface ChecklistTemplate {
+export interface ChecklistTemplate {
   id: string;
   label: string;
 }
@@ -41,22 +43,81 @@ const WINDOW: ChecklistTemplate[] = [
   { id: 'hardware', label: 'Polish hardware' },
 ];
 
-const TEMPLATES: Record<ServiceType, ChecklistTemplate[]> = {
+export const DEFAULT_CHECKLIST_TEMPLATES: Record<ServiceType, ChecklistTemplate[]> = {
   pool: POOL,
   lawn: LAWN,
   pressure: PRESSURE,
   window: WINDOW,
 };
 
+export type ChecklistConfig = Record<ServiceType, ChecklistTemplate[]>;
+
+let configPromise: Promise<ChecklistConfig> | null = null;
+
+/**
+ * Loads checklist templates from /config/checklists, falling back to the
+ * hard-coded defaults if the doc is missing or unreadable. Result is
+ * cached for the page lifetime — call invalidateChecklistsCache() after
+ * a save to force a refresh.
+ */
+export function loadChecklistsConfig(): Promise<ChecklistConfig> {
+  if (!configPromise) {
+    configPromise = (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'config', 'checklists'));
+        if (!snap.exists()) return DEFAULT_CHECKLIST_TEMPLATES;
+        const data = snap.data() as Partial<ChecklistConfig>;
+        return mergeChecklists(DEFAULT_CHECKLIST_TEMPLATES, data);
+      } catch {
+        return DEFAULT_CHECKLIST_TEMPLATES;
+      }
+    })();
+  }
+  return configPromise;
+}
+
+export function invalidateChecklistsCache(): void {
+  configPromise = null;
+}
+
+export async function saveChecklistsConfig(config: ChecklistConfig): Promise<void> {
+  await setDoc(doc(db, 'config', 'checklists'), config);
+  invalidateChecklistsCache();
+}
+
+function mergeChecklists(base: ChecklistConfig, override: Partial<ChecklistConfig>): ChecklistConfig {
+  return {
+    pool: override.pool && override.pool.length ? override.pool : base.pool,
+    lawn: override.lawn && override.lawn.length ? override.lawn : base.lawn,
+    pressure: override.pressure && override.pressure.length ? override.pressure : base.pressure,
+    window: override.window && override.window.length ? override.window : base.window,
+  };
+}
+
+/**
+ * Returns the checklist items for a fresh visit. If the cached config is
+ * available, uses the admin-managed template; otherwise falls back to
+ * the hard-coded defaults. Callers that can `await` should prefer
+ * getChecklistForAsync.
+ */
 export function getChecklistFor(serviceType: ServiceType): ChecklistItem[] {
-  return TEMPLATES[serviceType].map((t) => ({
+  return DEFAULT_CHECKLIST_TEMPLATES[serviceType].map(toItem);
+}
+
+export async function getChecklistForAsync(serviceType: ServiceType): Promise<ChecklistItem[]> {
+  const cfg = await loadChecklistsConfig();
+  return cfg[serviceType].map(toItem);
+}
+
+function toItem(t: ChecklistTemplate): ChecklistItem {
+  return {
     id: t.id,
     label: t.label,
     completed: false,
     completedAt: null,
-  }));
+  };
 }
 
 export function getChecklistTemplate(serviceType: ServiceType): ChecklistTemplate[] {
-  return TEMPLATES[serviceType];
+  return DEFAULT_CHECKLIST_TEMPLATES[serviceType];
 }
