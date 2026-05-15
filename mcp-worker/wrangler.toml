@@ -1,0 +1,23 @@
+name = "stable-services-mcp"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat_v2"]
+
+# ── Public config ──
+# Set these in `wrangler.toml` rather than secrets — they're not sensitive.
+[vars]
+FIRESTORE_PROJECT_ID = "stable-services"
+
+# ── Secrets (set via `wrangler secret put ...` after `wrangler deploy`) ──
+# - FIREBASE_SERVICE_ACCOUNT_JSON  → entire JSON for a service account that
+#   has Cloud Datastore User on the stable-services Firestore project.
+#     wrangler secret put FIREBASE_SERVICE_ACCOUNT_JSON
+#     (paste the full JSON file content; wrangler base64-encodes it for you)
+# - MCP_BEARER_TOKEN  → opaque shared secret. Clients (e.g. claude.ai)
+#   must send `Authorization: Bearer <token>` on every request.
+#     wrangler secret put MCP_BEARER_TOKEN
+
+# NOTE: NEVER hardcode the service account JSON in this file or in code.
+
+# Workers free tier limit: 100k requests/day. The MCP traffic from one
+# user is trivial — well within free tier. Logs go to wrangler tail.

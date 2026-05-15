@@ -1,0 +1,17 @@
+{
+  "name": "stable-services-mcp-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker hosting a remote MCP server that lets Claude create tasks + calendar events + read today's schedule for Stable Services. Writes to Firestore via the REST API authenticated with a Google service account.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250115.0",
+    "typescript": "^5.6.3",
+    "wrangler": "^3.99.0"
+  }
+}
