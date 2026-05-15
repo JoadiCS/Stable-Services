@@ -118,3 +118,46 @@ export interface ServiceRequest {
   updatedAt?: Timestamp;
 }
 
+export type TaskStatus = 'open' | 'done';
+export type TaskPriority = 'low' | 'normal' | 'high';
+export type TaskSource = 'admin' | 'claude';
+
+export interface Task {
+  id: string;
+  title: string;
+  notes?: string;
+  /** ISO YYYY-MM-DD. Null when intentionally unscheduled. */
+  dueDate?: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  /** Firebase Auth UID. Null = "Anyone" / unassigned. */
+  assignedToUid?: string | null;
+  assignedToName?: string;
+  source: TaskSource;
+  createdByUid: string;
+  createdByName: string;
+  createdAt?: Timestamp;
+  completedAt?: Timestamp | null;
+}
+
+export type CalendarEventType = 'reminder' | 'admin' | 'personal' | 'followup';
+export type CalendarEventSource = 'admin' | 'claude';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  notes?: string;
+  /** ISO YYYY-MM-DD. */
+  date: string;
+  /** HH:mm; undefined when allDay. */
+  startTime?: string;
+  endTime?: string;
+  allDay: boolean;
+  type: CalendarEventType;
+  relatedCustomerId?: string;
+  source: CalendarEventSource;
+  createdByUid: string;
+  createdByName: string;
+  createdAt?: Timestamp;
+}
+

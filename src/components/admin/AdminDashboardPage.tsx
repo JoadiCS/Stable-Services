@@ -10,7 +10,9 @@ import {
 import { loadPricingConfig, monthlyRevenueFor } from '@/lib/planPricing';
 import { countServiceRequestsSince } from '@/lib/serviceRequests';
 import { loadPoolRangesConfig, statusFor, type RangeKey } from '@/data/poolRanges';
-import type { Customer, Visit } from '@/types/portal';
+import { listenEventsInRange } from '@/lib/calendarEvents';
+import { listenTasks } from '@/lib/tasks';
+import type { CalendarEvent, Customer, Task, Visit } from '@/types/portal';
 
 interface Metrics {
   activeCustomers: number;
@@ -177,12 +179,15 @@ export function AdminDashboardPage() {
         </section>
       )}
 
+      <TodayPanel />
+
       <section
         style={{
           background: '#0a0f1e',
           border: '1px solid rgba(201,168,76,0.18)',
           borderRadius: 2,
           padding: '1.5rem',
+          marginTop: '2rem',
         }}
       >
         <div
@@ -242,6 +247,208 @@ function Metric({ label, value, sub }: { label: string; value: ReactNode; sub: s
     </article>
   );
 }
+
+function TodayPanel() {
+  const todayISO = format(new Date(), 'yyyy-MM-dd');
+  const [visits, setVisits] = useState<Visit[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const all = await listVisitsForWeek(todayISO, todayISO);
+        if (!cancelled) setVisits(all);
+      } catch {
+        if (!cancelled) setVisits([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [todayISO]);
+
+  useEffect(() => {
+    const unsub = listenEventsInRange(todayISO, todayISO, setEvents);
+    return unsub;
+  }, [todayISO]);
+
+  useEffect(() => {
+    const unsub = listenTasks(setTasks);
+    return unsub;
+  }, []);
+
+  const dueOrOverdue = tasks
+    .filter((t) => t.status === 'open' && typeof t.dueDate === 'string' && t.dueDate <= todayISO)
+    .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''));
+
+  return (
+    <section
+      style={{
+        background: '#0a0f1e',
+        border: '1px solid rgba(201,168,76,0.18)',
+        borderRadius: 2,
+        padding: '1.5rem',
+        marginTop: '0.5rem',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          gap: '0.75rem',
+          marginBottom: '0.9rem',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: '0.62rem',
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: '#c9a84c',
+              marginBottom: '0.3rem',
+            }}
+          >
+            Today
+          </div>
+          <div
+            style={{
+              fontFamily: 'Cormorant Garamond, Georgia, serif',
+              fontSize: '1.4rem',
+              fontWeight: 300,
+            }}
+          >
+            {format(new Date(), 'EEEE, MMM d')}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <Link to="/admin/calendar" className="ss-btn-ghost" style={{ padding: '0.4rem 0.8rem' }}>
+            Open Calendar →
+          </Link>
+          <Link to="/admin/tasks" className="ss-btn-ghost" style={{ padding: '0.4rem 0.8rem' }}>
+            Open Tasks →
+          </Link>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '0.85rem',
+        }}
+      >
+        <TodayColumn title={`Visits (${visits.length})`} empty="No visits scheduled today.">
+          {visits.map((v) => (
+            <Link
+              key={v.visitId}
+              to={`/tech/visit/${v.visitId}`}
+              style={todayItemStyle}
+            >
+              <div style={{ fontWeight: 500, fontSize: '0.88rem' }}>{v.customerName}</div>
+              <div style={{ color: '#8b95a7', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {v.scheduledWindow} · {v.serviceType}
+              </div>
+            </Link>
+          ))}
+        </TodayColumn>
+
+        <TodayColumn title={`Events (${events.length})`} empty="No calendar events today.">
+          {events.map((e) => (
+            <Link
+              key={e.id}
+              to="/admin/calendar"
+              style={todayItemStyle}
+            >
+              <div style={{ fontWeight: 500, fontSize: '0.88rem' }}>{e.title}</div>
+              <div style={{ color: '#8b95a7', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {e.allDay
+                  ? 'All day'
+                  : [e.startTime, e.endTime].filter(Boolean).join(' – ') || 'Timed'}
+                {' · '}{e.type}
+              </div>
+            </Link>
+          ))}
+        </TodayColumn>
+
+        <TodayColumn title={`Tasks (${dueOrOverdue.length})`} empty="Nothing due today.">
+          {dueOrOverdue.map((t) => {
+            const overdue = (t.dueDate ?? '') < todayISO;
+            return (
+              <Link key={t.id} to="/admin/tasks" style={todayItemStyle}>
+                <div style={{ fontWeight: 500, fontSize: '0.88rem' }}>{t.title}</div>
+                <div
+                  style={{
+                    color: overdue ? '#f0a5a5' : '#8b95a7',
+                    fontSize: '0.7rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  {overdue ? 'Overdue · ' : 'Due today · '}{t.priority}
+                  {t.assignedToName ? ` · ${t.assignedToName}` : ''}
+                </div>
+              </Link>
+            );
+          })}
+        </TodayColumn>
+      </div>
+    </section>
+  );
+}
+
+function TodayColumn({
+  title,
+  empty,
+  children,
+}: {
+  title: string;
+  empty: string;
+  children: React.ReactNode;
+}) {
+  const hasContent = Array.isArray(children) ? children.length > 0 : !!children;
+  return (
+    <div
+      style={{
+        background: '#111827',
+        border: '1px solid rgba(201,168,76,0.18)',
+        borderRadius: 2,
+        padding: '0.85rem 0.95rem',
+      }}
+    >
+      <div
+        style={{
+          fontSize: '0.6rem',
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          color: '#c9a84c',
+          marginBottom: '0.55rem',
+        }}
+      >
+        {title}
+      </div>
+      {hasContent ? (
+        <div style={{ display: 'grid', gap: '0.4rem' }}>{children}</div>
+      ) : (
+        <div style={{ color: '#5a6373', fontSize: '0.78rem' }}>{empty}</div>
+      )}
+    </div>
+  );
+}
+
+const todayItemStyle: React.CSSProperties = {
+  display: 'block',
+  padding: '0.5rem 0.6rem',
+  background: '#0a0f1e',
+  border: '1px solid rgba(201,168,76,0.18)',
+  borderRadius: 2,
+  textDecoration: 'none',
+  color: '#ffffff',
+};
 
 function WeeklyChart({ data }: { data: Metrics['weeklyCompletedCounts'] }) {
   const max = Math.max(1, ...data.map((d) => d.count));

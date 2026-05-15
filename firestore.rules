@@ -97,6 +97,14 @@ service cloud.firestore {
       allow write: if isOwnerOrAdmin();
     }
 
+    match /tasks/{id} {
+      allow read, create, update, delete: if isStaff();
+    }
+
+    match /calendarEvents/{id} {
+      allow read, create, update, delete: if isStaff();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

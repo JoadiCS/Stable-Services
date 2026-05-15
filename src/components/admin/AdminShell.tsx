@@ -5,6 +5,8 @@ import { signOut, useAuthUser } from '@/lib/auth';
 const navItems = [
   { to: '/admin/dashboard', label: 'Overview', end: true },
   { to: '/admin/customers', label: 'Customers' },
+  { to: '/admin/calendar', label: 'Calendar' },
+  { to: '/admin/tasks', label: 'Tasks' },
   { to: '/admin/schedule', label: 'Schedule' },
   { to: '/admin/techs', label: 'Techs' },
   { to: '/admin/requests', label: 'Service Requests' },
